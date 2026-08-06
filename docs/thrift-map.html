@@ -1069,7 +1069,9 @@ function popup(s){
   h+='<div class="links"><a class="go" href="'+maps+'" target="_blank" rel="noopener">directions ↗</a>'+
      (s.link?'<a class="web" href="'+esc(s.link)+'" target="_blank" rel="noopener">website ↗</a>':'')+'</div>';
   if(!s.verified)
-    h+='<div class="unv">⚠ not verified yet — hours, and whether it is still open, need confirming.'+
+    h+='<div class="unv">⚠ unverified draft. This description was written from general '+
+       'knowledge — not from the shop, a visit, or any published source — and the price '+
+       'and era tags are estimates. All of it needs checking.'+
        (FORM_URL?' <a href="'+FORM_URL+'" target="_blank" rel="noopener">tell us what you found ↗</a>':'')+'</div>';
   return h+'</div>';
 }
@@ -1191,8 +1193,9 @@ document.getElementById('vList').onclick=function(){ setView('list'); };
 var add=document.getElementById('addBtn');
 if(FORM_URL){ add.href=FORM_URL; } else { add.style.display='none'; }
 document.getElementById('note').innerHTML =
-  'A starter list, not a finished one — every entry still needs someone to walk past and confirm it. '+
-  'Shops here open and close fast. Pin positions are block-accurate until verified; '+
+  'A starter list, not a finished one. The shop descriptions, price tiers and era tags were '+
+  'written from general knowledge rather than from the shops themselves, so treat every one as a '+
+  'draft until someone has checked it. Pin positions are block-accurate until verified; '+
   'add <code>?admin=1</code> to the address bar to drag them into place.';
 
 if(HAS_MAP){

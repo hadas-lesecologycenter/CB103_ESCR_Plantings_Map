@@ -96,7 +96,27 @@ neighborhood for nothing. Reviewing is a two-minute job.
 
 ## 3. Verifying the starter list
 
-Every one of the 36 rows currently has `verified` = `no`, and every popup says so. That
+### Where this data came from
+
+**Claude wrote it from general knowledge.** The shop names, addresses, descriptions,
+price tiers, era tags, goods categories and nonprofit flags were recalled by a language
+model, not gathered from the shops, a visit, a scrape, or any published dataset. Nothing
+here has a citation, because there isn't one. The only exceptions are the ten website
+URLs, which were included only where they were certain.
+
+Treat this the way you'd treat a knowledgeable friend's list scribbled from memory: a
+very useful starting point, wrong in places, and not something to publish under the
+organization's name until someone has been round with it.
+
+Be aware that some descriptions make **commercial judgments about named businesses** —
+that a shop is "thrift-adjacent" in pricing, sells "mostly new reproduction rather than
+true vintage", or charges "collector prices". Those are the model's characterizations,
+not reporting. They are the first thing to rewrite or cut, because a shop owner who
+disagrees with one has a legitimate complaint and there is no source to point to.
+
+### The worklist
+
+Every one of the 36 rows has `verified` = `no`, and every popup says so plainly. That
 flag is the point of the list, not a defect in it — it is a worklist.
 
 To verify a shop: confirm it is open, get the real hours, get the real Instagram or
