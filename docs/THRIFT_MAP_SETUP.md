@@ -1,7 +1,20 @@
 # Secondhand LES & East Village — setup & upkeep
 
-The map lives at **`docs/thrift-map.html`**. It is one self-contained file, like the
-tree maps in this repo, and it works on GitHub Pages with no build step.
+The map lives at **`docs/thrift-map.html`**, with Leaflet vendored beside it in
+**`docs/vendor/`**. It works on GitHub Pages with no build step.
+
+> **Keep `vendor/` next to the HTML file.** Leaflet is served from this repo rather than
+> a CDN, so the map still works on locked-down networks and in preview panes that block
+> outside requests. Move the HTML somewhere without `vendor/` alongside it and you get a
+> yellow warning banner and the list view instead of a map. Fonts are ordinary system
+> fonts for the same reason — nothing to download.
+>
+> The only external request left is the basemap tiles from CARTO. If those are blocked,
+> the map still works — pins, filters, routes and popups are all local — you just get a
+> plain dark background and a banner saying so.
+
+There is a **map / list** toggle in the top-right of the map area. The list is the same
+filtered set as the pins, and it's what shows automatically if the map can't start.
 
 It reads its shop list from the first source that answers:
 

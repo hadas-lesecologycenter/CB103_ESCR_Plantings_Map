@@ -1,188 +1,271 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Secondhand LES &amp; East Village — a reuse map</title>
-<meta name="description" content="An interactive map of vintage, thrift, consignment and secondhand shops in the Lower East Side and East Village, with suggested walking routes."/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<title>SECONDHAND ★ LES + EAST VILLAGE</title>
+<meta name="description" content="Interactive map of vintage, thrift, consignment and secondhand shops in the Lower East Side and East Village, with walking routes."/>
+<link rel="stylesheet" href="vendor/leaflet.css"/>
 <style>
+/* ══════════════════════════════════════════════════════════════════════
+   Y2K / early-web styling. Fonts are system fonts on purpose — period
+   correct, and nothing to download that could fail.
+   ══════════════════════════════════════════════════════════════════════ */
 :root{
-  --clay:#A8442A;--rust:#7E2F1B;--mustard:#E0A93B;--cream:#F8F3E9;--paper:#fffdf8;
-  --ink:#2B211B;--muted:#7A6A5E;--line:#E2D5C1;--forest:#2D5F2B;
+  --pink:#FF2E97; --cyan:#00B8FF; --lime:#C6FF3D; --violet:#A45DEB;
+  --orange:#FF9F1C; --green:#00D68F; --yellow:#FFE23D; --red:#FF4757;
+  --ink:#14082A; --deep:#1E0C3D; --white:#fff;
+  --chrome:linear-gradient(180deg,#fff 0%,#e8eefb 45%,#b9c8e4 52%,#e9f0ff 100%);
+  --shadow:3px 3px 0 rgba(20,8,42,.85);
 }
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;font-family:'Lexend',sans-serif;color:var(--ink);overscroll-behavior:none}
-#map{position:absolute;inset:0;background:var(--cream)}
-.panel{background:rgba(255,253,248,.975);border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 26px rgba(43,33,27,.16)}
-#controls{position:absolute;z-index:1000;top:14px;left:14px;width:290px;max-height:calc(100% - 28px);overflow-y:auto;padding:16px 16px 14px}
-h1{font-family:'Poppins';font-weight:700;font-size:17px;margin:0 0 2px;color:var(--rust);line-height:1.2}
-.sub{font-size:11px;color:var(--muted);margin:0 0 12px;line-height:1.45}
-.lbl{font-family:'Poppins';font-weight:600;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--clay);margin:14px 0 6px}
-.lbl:first-of-type{margin-top:0}
+html,body{margin:0;padding:0;height:100%;font-family:Verdana,Geneva,Tahoma,sans-serif;color:var(--ink);background:var(--deep)}
+body{overflow:hidden}
+
+/* ── layout: a grid, so panels can never sit on top of the map ───────── */
+#app{display:grid;grid-template-columns:342px 1fr;height:100%;width:100%}
+#side{
+  background:
+    repeating-linear-gradient(45deg,rgba(255,255,255,.55) 0 2px,transparent 2px 9px),
+    linear-gradient(165deg,#FFD9F2 0%,#D9E4FF 40%,#CFF7FF 75%,#EDFFD6 100%);
+  border-right:3px solid var(--ink);overflow-y:auto;overflow-x:hidden;padding:14px 14px 22px;
+}
+#mapwrap{position:relative;min-width:0;min-height:0}
+#map{position:absolute;inset:0;background:#241046}
+
+/* ── chrome scrollbar ─────────────────────────────────────────────────── */
+#side::-webkit-scrollbar{width:13px}
+#side::-webkit-scrollbar-track{background:#e7d9ff;border-left:2px solid var(--ink)}
+#side::-webkit-scrollbar-thumb{background:var(--chrome);border:2px solid var(--ink);border-radius:7px}
+
+/* ── header ──────────────────────────────────────────────────────────── */
+#hdr{background:linear-gradient(180deg,#2B1259 0%,#4B1D8F 48%,#2B1259 100%);
+  border:3px solid var(--ink);border-radius:13px;padding:11px 12px 12px;box-shadow:var(--shadow);margin-bottom:12px}
+#hdr h1{margin:0;font-family:'Arial Black','Arial Bold',Impact,sans-serif;font-size:19px;line-height:1.06;
+  letter-spacing:-.02em;text-transform:uppercase;
+  background:linear-gradient(180deg,#fff 0%,#ffe6fa 38%,var(--pink) 55%,#ff8ed0 74%,#fff 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(1.5px 1.5px 0 #12061f)}
+#hdr p{margin:6px 0 0;font-size:10px;color:#E9DBFF;line-height:1.5}
+#hdr .spark{color:var(--lime)}
+
+/* ── blocks ──────────────────────────────────────────────────────────── */
+.blk{background:rgba(255,255,255,.94);border:3px solid var(--ink);border-radius:13px;
+  padding:11px 12px 12px;box-shadow:var(--shadow);margin-bottom:11px}
+.lbl{font-family:'Arial Black',Arial,sans-serif;font-size:10px;letter-spacing:.03em;text-transform:uppercase;
+  color:var(--ink);margin:0 0 7px;display:flex;align-items:center;gap:5px}
+.lbl b{color:var(--pink)}
+.chips+.lbl,.seg+.lbl,.tgl+.lbl,.lbl+.lbl{margin-top:14px}
+
+/* ── controls ────────────────────────────────────────────────────────── */
+#search{width:100%;border:2.5px solid var(--ink);border-radius:20px;padding:8px 12px;
+  font:400 12px Verdana,sans-serif;background:#fff;box-shadow:inset 2px 2px 0 rgba(20,8,42,.13)}
+#search:focus{outline:none;border-color:var(--pink);background:#fff8fd}
 .chips{display:flex;flex-wrap:wrap;gap:5px}
-.chip{border:1px solid var(--line);background:#fff;border-radius:20px;padding:4px 9px;font:400 10.5px 'Lexend';color:#5c4f45;cursor:pointer;display:flex;align-items:center;gap:5px;transition:.12s}
-.chip:hover{border-color:var(--clay)}
-.chip.on{background:var(--clay);border-color:var(--clay);color:#fff}
-.chip i{width:8px;height:8px;border-radius:50%;flex:none}
-.chip.on i{box-shadow:0 0 0 1.5px #fff inset}
-#search{width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font:400 12px 'Lexend';color:var(--ink);background:#fff}
-#search:focus{outline:none;border-color:var(--clay)}
-.seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
-.seg button{flex:1;border:0;background:#fff;padding:7px 3px;font:500 11px 'Lexend';color:#5c4f45;cursor:pointer}
-.seg button.on{background:var(--clay);color:#fff}
-.seg button+button{border-left:1px solid var(--line)}
-.toggle{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#5c4f45;margin-top:7px;cursor:pointer}
-.toggle input{accent-color:var(--clay);width:14px;height:14px;margin:0}
-.routebtn{width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;margin-top:6px;cursor:pointer;font:400 11.5px 'Lexend';color:#5c4f45;display:flex;align-items:center;gap:8px}
-.routebtn b{font-family:'Poppins';font-weight:600;font-size:11.5px;color:var(--ink);display:block}
-.routebtn span{font-size:10px;color:var(--muted)}
-.routebtn i{width:14px;height:3px;border-radius:2px;flex:none}
-.routebtn.on{border-color:var(--clay);background:#fdf4ee}
-#count{font-size:11px;color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
-#count b{font-family:'Poppins';color:var(--rust)}
-.actions{display:flex;gap:6px;margin-top:10px}
-.btn{flex:1;border:0;border-radius:9px;padding:9px 6px;font:600 11px 'Poppins';cursor:pointer;text-align:center;text-decoration:none;display:block}
-.btn-primary{background:var(--mustard);color:#4a3410}
-.btn-ghost{background:#fff;border:1px solid var(--line);color:#5c4f45}
-.note{font-size:10px;line-height:1.5;color:var(--muted);border-top:1px dashed var(--line);padding-top:10px;margin-top:12px}
-.note a{color:var(--clay)}
-#src{position:absolute;top:14px;right:14px;z-index:1000;padding:7px 12px;font:400 10.5px 'Lexend';color:var(--muted);max-width:210px;line-height:1.4}
-#src b{font-family:'Poppins';font-weight:600;color:var(--ink)}
-#routecard{position:absolute;bottom:14px;right:14px;z-index:1000;width:250px;padding:13px 14px;display:none;max-height:52%;overflow-y:auto}
-#routecard h2{font-family:'Poppins';font-size:13px;margin:0 0 3px;color:var(--rust)}
-#routecard p{font-size:10.5px;color:var(--muted);margin:0 0 9px;line-height:1.45}
-#routecard ol{margin:0;padding-left:20px;font-size:11.5px;line-height:1.7}
-#routecard li{cursor:pointer;color:#5c4f45}
-#routecard li:hover{color:var(--clay);text-decoration:underline}
-.leaflet-popup-content-wrapper{border-radius:13px;box-shadow:0 8px 28px rgba(43,33,27,.22)}
-.leaflet-popup-content{margin:14px 15px;font-family:'Lexend';width:245px!important}
-.pop h3{font-family:'Poppins';font-weight:600;font-size:14.5px;margin:0 0 4px;line-height:1.25;color:var(--ink)}
-.pop .kind{display:inline-block;font-size:9.5px;font-family:'Poppins';font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#fff;padding:3px 7px;border-radius:5px;margin-bottom:8px}
-.pop .addr{font-size:11.5px;color:var(--muted);margin:0 0 6px;line-height:1.45}
-.pop .blurb{font-size:12px;line-height:1.55;margin:0 0 9px}
-.pop dl{margin:0 0 9px;display:grid;grid-template-columns:auto 1fr;gap:3px 9px;font-size:11px}
-.pop dt{color:var(--muted)}
-.pop dd{margin:0;color:var(--ink)}
-.pop .tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px}
-.pop .tags span{font-size:9.5px;background:#f2e9db;color:#6b5a4a;padding:3px 7px;border-radius:11px}
-.pop .links{display:flex;gap:6px}
-.pop .links a{flex:1;text-align:center;font:600 10.5px 'Poppins';padding:7px 4px;border-radius:8px;text-decoration:none}
-.pop .links a.go{background:var(--clay);color:#fff}
-.pop .links a.web{background:#fff;border:1px solid var(--line);color:#5c4f45}
-.pop .unv{font-size:10px;color:#8a6a1e;background:#fdf5e2;border:1px solid #f0e0b8;border-radius:7px;padding:6px 8px;margin-top:9px;line-height:1.45}
-.pop .unv a{color:#8a6a1e}
-#toggle{display:none}
-@media (max-width:760px){
-  #controls{top:auto;bottom:0;left:0;width:100%;max-width:100%;border-radius:16px 16px 0 0;max-height:62%;padding:12px 14px 16px}
-  #toggle{display:block;position:absolute;bottom:0;left:0;width:100%;z-index:1001;border:0;background:var(--clay);color:#fff;font:600 12px 'Poppins';padding:12px;cursor:pointer}
-  #controls.hidden{display:none}
-  #controls.shown+#toggle{background:var(--rust)}
-  #routecard{display:none!important}
-  #src{top:10px;right:10px;left:10px;max-width:none}
-  .leaflet-popup-content{width:210px!important}
+.chip{border:2px solid var(--ink);border-radius:20px;padding:4px 10px;font:700 10px Verdana,sans-serif;
+  color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:5px;
+  background:linear-gradient(180deg,#fff 0%,#f2f5ff 48%,#dde6f8 52%,#fff 100%);
+  box-shadow:1.5px 1.5px 0 rgba(20,8,42,.6);transition:transform .08s}
+.chip:hover{transform:translate(-1px,-1px);box-shadow:2.5px 2.5px 0 rgba(20,8,42,.7)}
+.chip:active{transform:translate(1px,1px);box-shadow:0 0 0 rgba(20,8,42,.6)}
+.chip.on{background:linear-gradient(180deg,#fff9fd 0%,var(--pink) 30%,#e01b7f 100%);color:#fff;
+  text-shadow:1px 1px 0 rgba(0,0,0,.35)}
+.chip i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--ink);flex:none}
+.seg{display:flex;gap:4px}
+.seg button{flex:1;border:2px solid var(--ink);border-radius:8px;padding:6px 2px;cursor:pointer;
+  font:700 11px Verdana,sans-serif;color:var(--ink);
+  background:linear-gradient(180deg,#fff 0%,#f2f5ff 48%,#dde6f8 52%,#fff 100%);box-shadow:1.5px 1.5px 0 rgba(20,8,42,.6)}
+.seg button.on{background:linear-gradient(180deg,#f0fbff 0%,var(--cyan) 32%,#0087c9 100%);color:#fff;
+  text-shadow:1px 1px 0 rgba(0,0,0,.3)}
+.tgl{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;margin-top:8px;cursor:pointer;line-height:1.3}
+.tgl input{accent-color:var(--pink);width:15px;height:15px;margin:0;flex:none}
+
+/* ── route buttons ───────────────────────────────────────────────────── */
+.routebtn{width:100%;text-align:left;border:2.5px solid var(--ink);border-radius:11px;padding:8px 10px;
+  margin-top:6px;cursor:pointer;display:flex;align-items:center;gap:8px;font-family:Verdana,sans-serif;
+  background:linear-gradient(180deg,#fff 0%,#f4f7ff 48%,#e2e9fa 52%,#fff 100%);box-shadow:2px 2px 0 rgba(20,8,42,.6)}
+.routebtn b{font-family:'Arial Black',Arial,sans-serif;font-size:11px;display:block;line-height:1.25}
+.routebtn small{font-size:9.5px;color:#5b4a72;font-weight:700}
+.routebtn .dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--ink);flex:none}
+.routebtn.on{background:linear-gradient(180deg,#fffdf0 0%,var(--yellow) 34%,#e8c800 100%)}
+
+/* ── route detail (inside the sidebar — never floats over the map) ───── */
+#rc{display:none;background:linear-gradient(180deg,#2B1259,#43197F);color:#fff;border:3px solid var(--ink);
+  border-radius:13px;padding:11px 12px;box-shadow:var(--shadow);margin-bottom:11px}
+#rc h2{margin:0 0 4px;font-family:'Arial Black',Arial,sans-serif;font-size:13px;color:var(--lime)}
+#rc p{margin:0 0 8px;font-size:10px;line-height:1.55;color:#E9DBFF}
+#rc ol{margin:0;padding-left:21px;font-size:11px;line-height:1.75}
+#rc li{cursor:pointer}
+#rc li:hover{color:var(--lime);text-decoration:underline}
+
+/* ── counter + actions ───────────────────────────────────────────────── */
+#count{font-size:11px;font-weight:700;text-align:center;line-height:1.5}
+#count b{font-family:'Arial Black',Arial,sans-serif;color:var(--pink);font-size:14px}
+.btn{display:block;width:100%;border:2.5px solid var(--ink);border-radius:22px;padding:9px 8px;margin-top:8px;
+  cursor:pointer;text-align:center;text-decoration:none;font:700 11px Verdana,sans-serif;color:var(--ink);
+  box-shadow:2px 2px 0 rgba(20,8,42,.7);
+  background:linear-gradient(180deg,#fff 0%,#f2f5ff 46%,#d7e2f7 52%,#fff 100%)}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 rgba(20,8,42,.75)}
+.btn-go{background:linear-gradient(180deg,#fffce8 0%,var(--lime) 34%,#96d400 100%)}
+#note{font-size:9.5px;line-height:1.6;color:#4a3a63;margin:0}
+#note code{background:#efe6ff;border:1px solid #cbb8f0;border-radius:3px;padding:0 3px;font-size:9px}
+#src{font-size:9.5px;line-height:1.5;color:#4a3a63;margin:0}
+#src b{font-family:'Arial Black',Arial,sans-serif;font-size:10px;color:var(--ink);display:block}
+
+/* ── list view ───────────────────────────────────────────────────────── */
+#listwrap{display:none;position:absolute;inset:0;overflow-y:auto;background:#241046;padding:14px;z-index:500}
+.card{background:#fff;border:3px solid var(--ink);border-radius:12px;padding:10px 12px;margin-bottom:9px;
+  box-shadow:3px 3px 0 rgba(0,0,0,.5)}
+.card h3{margin:0 0 3px;font-family:'Arial Black',Arial,sans-serif;font-size:13px}
+.card .a{font-size:10.5px;color:#5b4a72;margin:0 0 5px}
+.card .b{font-size:11px;line-height:1.5;margin:0}
+#viewseg{position:absolute;top:12px;right:12px;z-index:600;display:flex;gap:4px}
+#viewseg button{border:2.5px solid var(--ink);border-radius:8px;padding:7px 13px;cursor:pointer;
+  font:700 11px Verdana,sans-serif;box-shadow:2px 2px 0 rgba(0,0,0,.6);
+  background:linear-gradient(180deg,#fff 0%,#eef3ff 48%,#d5e0f5 52%,#fff 100%)}
+#viewseg button.on{background:linear-gradient(180deg,#fff0fa 0%,var(--pink) 34%,#d4197c 100%);color:#fff}
+
+/* ── banner for load failures ────────────────────────────────────────── */
+#warn{display:none;position:absolute;left:12px;right:120px;top:12px;z-index:600;background:var(--yellow);
+  border:3px solid var(--ink);border-radius:11px;padding:9px 12px;font-size:10.5px;font-weight:700;
+  line-height:1.5;box-shadow:3px 3px 0 rgba(0,0,0,.55)}
+
+/* ── popups ──────────────────────────────────────────────────────────── */
+.leaflet-popup-content-wrapper{border-radius:13px;border:3px solid var(--ink);box-shadow:4px 4px 0 rgba(0,0,0,.6);background:#fff}
+.leaflet-popup-content{margin:12px 13px;font-family:Verdana,sans-serif;width:238px!important}
+.leaflet-popup-tip{border:3px solid var(--ink)}
+.pop h3{margin:0 0 5px;font-family:'Arial Black',Arial,sans-serif;font-size:14px;line-height:1.2}
+.pop .kind{display:inline-block;font:700 9px Verdana,sans-serif;letter-spacing:.03em;text-transform:uppercase;
+  border:2px solid var(--ink);padding:2px 7px;border-radius:11px;margin-bottom:7px}
+.pop .addr{font-size:10.5px;color:#5b4a72;margin:0 0 6px;line-height:1.45}
+.pop .blurb{font-size:11px;line-height:1.55;margin:0 0 8px}
+.pop dl{margin:0 0 8px;display:grid;grid-template-columns:auto 1fr;gap:3px 8px;font-size:10px}
+.pop dt{color:#5b4a72;font-weight:700}
+.pop dd{margin:0}
+.pop .tags{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px}
+.pop .tags span{font-size:9px;font-weight:700;background:#F0E6FF;border:1.5px solid #C6AEF0;color:#4a3a63;padding:2px 6px;border-radius:9px}
+.pop .links{display:flex;gap:5px}
+.pop .links a{flex:1;text-align:center;font:700 10px Verdana,sans-serif;padding:7px 3px;border-radius:14px;
+  text-decoration:none;border:2px solid var(--ink);color:var(--ink);box-shadow:1.5px 1.5px 0 rgba(20,8,42,.6)}
+.pop .links a.go{background:linear-gradient(180deg,#fff0fa 0%,var(--pink) 34%,#d4197c 100%);color:#fff}
+.pop .links a.web{background:linear-gradient(180deg,#fff 0%,#eef3ff 48%,#d5e0f5 52%,#fff 100%)}
+.pop .unv{font-size:9.5px;font-weight:700;background:var(--yellow);border:2px solid var(--ink);border-radius:8px;
+  padding:6px 8px;margin-top:8px;line-height:1.5}
+.pop .unv a{color:var(--ink)}
+
+/* ── mobile: stack, don't overlay ────────────────────────────────────── */
+@media (max-width:860px){
+  body{overflow:auto}
+  #app{grid-template-columns:1fr;grid-template-rows:58vh auto;height:auto;min-height:100%}
+  #mapwrap{grid-row:1;height:58vh}
+  #side{grid-row:2;border-right:0;border-top:3px solid var(--ink);overflow-y:visible;padding-bottom:30px}
+  .leaflet-popup-content{width:200px!important}
+  #warn{right:12px;top:56px}
 }
 </style></head><body>
-<div id="map"></div>
 
-<div id="src" class="panel"><b id="srcname">Loading…</b><div id="srcnote"></div></div>
+<div id="app">
+  <div id="side">
+    <div id="hdr">
+      <h1>Secondhand<br/>LES + East Village</h1>
+      <p><span class="spark">★</span> vintage · thrift · consignment · resale <span class="spark">★</span><br/>
+         every rack on this map is stuff that already exists</p>
+    </div>
 
-<div id="controls" class="panel">
-  <h1>Secondhand LES &amp; East Village</h1>
-  <p class="sub">Vintage, thrift, consignment and resale — everything below keeps usable things out of the waste stream. A project of the <a href="https://www.lesecologycenter.org" style="color:var(--clay)">Lower East Side Ecology Center</a>.</p>
+    <div class="blk">
+      <input id="search" type="search" placeholder="search shops…" autocomplete="off"/>
+      <p class="lbl" style="margin-top:11px"><b>✦</b> kind of shop</p>
+      <div class="chips" id="fType"></div>
+      <p class="lbl"><b>✦</b> price</p>
+      <div class="seg" id="fPrice">
+        <button data-p="0" class="on">all</button><button data-p="1">$</button><button data-p="2">$$</button><button data-p="3">$$$</button>
+      </div>
+      <p class="lbl"><b>✦</b> what they sell</p>
+      <div class="chips" id="fGoods"></div>
+      <p class="lbl"><b>✦</b> era</p>
+      <div class="chips" id="fEra"></div>
+      <p class="lbl"><b>✦</b> only show</p>
+      <label class="tgl"><input type="checkbox" id="fNonprofit"/> nonprofit &amp; mission-driven</label>
+      <label class="tgl"><input type="checkbox" id="fBuys"/> places that take your stuff</label>
+    </div>
 
-  <input id="search" type="search" placeholder="Search shops…" autocomplete="off"/>
+    <div class="blk">
+      <p class="lbl"><b>✦</b> walking routes</p>
+      <div id="fRoutes"></div>
+    </div>
 
-  <p class="lbl">Kind of shop</p>
-  <div class="chips" id="fType"></div>
+    <div id="rc"><h2 id="rcName"></h2><p id="rcDesc"></p><ol id="rcList"></ol></div>
 
-  <p class="lbl">Price</p>
-  <div class="seg" id="fPrice">
-    <button data-p="0" class="on">All</button><button data-p="1">$</button><button data-p="2">$$</button><button data-p="3">$$$</button>
+    <div class="blk">
+      <div id="count"></div>
+      <a class="btn btn-go" id="addBtn" href="#" target="_blank" rel="noopener">+ add a shop</a>
+      <button class="btn" id="resetBtn">reset filters</button>
+    </div>
+
+    <div class="blk"><p id="src"></p></div>
+    <div class="blk"><p id="note"></p></div>
   </div>
 
-  <p class="lbl">What they sell</p>
-  <div class="chips" id="fGoods"></div>
-
-  <p class="lbl">Era</p>
-  <div class="chips" id="fEra"></div>
-
-  <p class="lbl">Only show</p>
-  <label class="toggle"><input type="checkbox" id="fNonprofit"/> Nonprofit &amp; mission-driven</label>
-  <label class="toggle"><input type="checkbox" id="fBuys"/> Places that take your stuff</label>
-
-  <p class="lbl">Walking routes</p>
-  <div id="fRoutes"></div>
-
-  <div id="count"></div>
-
-  <div class="actions">
-    <a class="btn btn-primary" id="addBtn" href="#" target="_blank" rel="noopener">+ Add a shop</a>
-    <button class="btn btn-ghost" id="resetBtn">Reset filters</button>
+  <div id="mapwrap">
+    <div id="map"></div>
+    <div id="listwrap"></div>
+    <div id="viewseg">
+      <button id="vMap" class="on">map</button><button id="vList">list</button>
+    </div>
+    <div id="warn"></div>
   </div>
-
-  <p class="note" id="note"></p>
 </div>
-<button id="toggle">Filters &amp; routes</button>
 
-<div id="routecard" class="panel"><h2 id="rcName"></h2><p id="rcDesc"></p><ol id="rcList"></ol></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="vendor/leaflet.js"></script>
 <script>
 /* ─────────────────────────────────────────────────────────────────────────
    CONFIGURE ME — see THRIFT_MAP_SETUP.md
-   SHEET_URL: paste the "Publish to web → CSV" link for the Shops tab.
-              Leave blank and the map falls back to shops.csv / the built-in list.
-   FORM_URL:  paste the public link to your "Add or fix a shop" Google Form.
    ───────────────────────────────────────────────────────────────────────── */
 var SHEET_URL = '';
 var FORM_URL  = '';
 
 var TYPES = {
-  'Vintage boutique'  : '#A8442A',
-  'Thrift & charity'  : '#2D7D5A',
-  'Consignment'       : '#C77B2B',
-  'Archive & designer': '#6A4C93',
-  'Books & records'   : '#2F6D8F',
-  'Home & furniture'  : '#8A6A3B',
-  'Flea & market'     : '#C2436B'
+  'Vintage boutique'  : '#FF2E97',
+  'Thrift & charity'  : '#00D68F',
+  'Consignment'       : '#FF9F1C',
+  'Archive & designer': '#A45DEB',
+  'Books & records'   : '#00B8FF',
+  'Home & furniture'  : '#FFE23D',
+  'Flea & market'     : '#FF4757'
 };
 var GOODS = ['Clothing','Accessories','Jewelry','Eyewear','Housewares','Furniture','Books','Records','Art'];
 var ERAS  = ['Pre-1960s','1960s-70s','1970s-80s','1980s-90s','1990s-Y2K','Y2K-2010s','Mixed'];
 
 var ROUTES = [
-  { name:'East 7th to 11th ramble', color:'#A8442A',
+  { name:'East 7th to 11th ramble', color:'#FF2E97',
     desc:'The densest run of vintage in the East Village — about 25 minutes of walking, a full afternoon if you actually stop.',
-    stops:['Metropolis Vintage','Search & Destroy','East Village Books','Tokio 7','AuH2O Thriftique','Trash and Vaudeville','Village Style','Cobblestones','Fabulous Fanny\'s','Buffalo Exchange','Tokyo Joe','No Relation Vintage'] },
-  { name:'Orchard & Ludlow loop', color:'#6A4C93',
+    stops:['Metropolis Vintage','Search & Destroy','East Village Books','Village Style','Trash and Vaudeville','AuH2O Thriftique','Tokio 7','Cobblestones','Fabulous Fanny\'s','Buffalo Exchange','Tokyo Joe','No Relation Vintage'] },
+  { name:'Orchard & Ludlow loop', color:'#A45DEB',
     desc:'The old garment blocks of the Lower East Side, now archive vintage and small bookshops. Ends at the Hester Street Fair — weekends and warm months only.',
-    stops:['Procell','Edith Machinist','David Owens Vintage','Marmalade Vintage','Bluestockings Cooperative','Sweet Pickle Books','Hester Street Fair','James Veloria'] },
-  { name:'Books, records & reuse', color:'#2F6D8F',
-    desc:'Paper and vinyl, plus the two most donation-driven shops on the map. Every stop on this route also buys or takes what you bring in.',
-    stops:['Strand Book Store','Alabaster Bookshop','Cure Thrift Shop','Good Records NYC','Gimme Gimme Records','Mast Books','A1 Record Shop','Codex Books','Housing Works Bookstore Cafe'] }
+    stops:['Procell','David Owens Vintage','Edith Machinist','Bluestockings Cooperative','Marmalade Vintage','Sweet Pickle Books','Hester Street Fair','James Veloria'] },
+  { name:'Books, records & reuse', color:'#00B8FF',
+    desc:'Paper and vinyl, plus the two most donation-driven shops on the map. Every stop here also buys or takes what you bring in.',
+    stops:['Strand Book Store','Alabaster Bookshop','Cure Thrift Shop','Good Records NYC','Gimme Gimme Records','A1 Record Shop','Mast Books','Codex Books','Housing Works Bookstore Cafe'] }
 ];
 
 var SEED = /*__SEED__*/[{"name": "Tokio 7","address": "83 E 7th St","neighborhood": "East Village","lat": "40.7267","lng": "-73.9862","type": "Consignment","price": "3","goods": "Clothing|Accessories","eras": "1980s-90s|Y2K-2010s","nonprofit": "no","buysell": "Consignment","hours": "","link": "","blurb": "Long-running designer consignment in a basement space; strong on Japanese labels and archive runway pieces.","verified": "no","notes": ""},{"name": "AuH2O Thriftique","address": "84 E 7th St","neighborhood": "East Village","lat": "40.7268","lng": "-73.9863","type": "Thrift & charity","price": "1","goods": "Clothing|Accessories","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "Tightly packed thrift-priced racks with a punk and party-dress bent. Owner-curated rather than donation-sorted.","verified": "no","notes": ""},{"name": "Village Style","address": "111 E 7th St","neighborhood": "East Village","lat": "40.7261","lng": "-73.9848","type": "Vintage boutique","price": "2","goods": "Clothing|Accessories","eras": "1960s-70s|1980s-90s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Dense basement vintage; denim, leather, band tees and workwear stacked to the ceiling.","verified": "no","notes": ""},{"name": "Trash and Vaudeville","address": "96 E 7th St","neighborhood": "East Village","lat": "40.7266","lng": "-73.9857","type": "Vintage boutique","price": "2","goods": "Clothing|Accessories","eras": "1970s-80s|Mixed","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "East Village punk institution since 1975. Mostly new reproduction rather than true vintage, but the reason half the block still dresses this way.","verified": "no","notes": "Mostly new stock - included for context; flag if you want vintage-only"},{"name": "Search & Destroy","address": "25 St Marks Pl","neighborhood": "East Village","lat": "40.7290","lng": "-73.9882","type": "Vintage boutique","price": "2","goods": "Clothing|Accessories","eras": "1970s-80s|1980s-90s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Studs, tartan, customized leather and secondhand punk on a wall of pinned-up stock.","verified": "no","notes": ""},{"name": "Metropolis Vintage","address": "43 Third Ave","neighborhood": "East Village","lat": "40.7300","lng": "-73.9885","type": "Vintage boutique","price": "2","goods": "Clothing|Accessories","eras": "1960s-70s|1980s-90s","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "Broad general vintage: tees, western shirts, varsity jackets, sunglasses. A good first stop for orientation.","verified": "no","notes": ""},{"name": "Stock Vintage","address": "143 E 13th St","neighborhood": "East Village","lat": "40.7318","lng": "-73.9877","type": "Archive & designer","price": "3","goods": "Clothing|Accessories","eras": "Pre-1960s|1960s-70s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Serious American workwear and militaria; deadstock denim, chore coats and boots priced for collectors.","verified": "no","notes": ""},{"name": "Cure Thrift Shop","address": "111 E 12th St","neighborhood": "East Village","lat": "40.7318","lng": "-73.9888","type": "Thrift & charity","price": "1","goods": "Clothing|Housewares|Furniture|Books","eras": "Mixed","nonprofit": "yes","buysell": "Buys from public","hours": "","link": "https://curethriftshop.com","blurb": "Nonprofit thrift benefiting diabetes research. Furniture, housewares and clothing under one roof - the most donation-driven shop on this map.","verified": "no","notes": ""},{"name": "Buffalo Exchange","address": "332 E 11th St","neighborhood": "East Village","lat": "40.7288","lng": "-73.9852","type": "Consignment","price": "2","goods": "Clothing|Accessories","eras": "1990s-Y2K|Y2K-2010s","nonprofit": "no","buysell": "Buys from public|Trade credit","hours": "","link": "https://buffaloexchange.com","blurb": "Buy-sell-trade chain: bring a bag, get cash or store credit on the spot. The easiest place to divert your own clothes.","verified": "no","notes": ""},{"name": "Tokyo Joe","address": "334 E 11th St","neighborhood": "East Village","lat": "40.7288","lng": "-73.9851","type": "Consignment","price": "3","goods": "Clothing|Accessories","eras": "1990s-Y2K|Y2K-2010s","nonprofit": "no","buysell": "Consignment","hours": "","link": "","blurb": "Designer consignment next door to Buffalo Exchange; steady rotation of contemporary labels at resale prices.","verified": "no","notes": ""},{"name": "Cobblestones","address": "314 E 9th St","neighborhood": "East Village","lat": "40.7279","lng": "-73.9857","type": "Vintage boutique","price": "2","goods": "Clothing|Jewelry|Accessories","eras": "Pre-1960s|1960s-70s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Small, crowded, and heavy on costume jewelry, beaded bags and earlier-decade pieces.","verified": "no","notes": ""},{"name": "Fabulous Fanny's","address": "335 E 9th St","neighborhood": "East Village","lat": "40.7278","lng": "-73.9855","type": "Archive & designer","price": "3","goods": "Eyewear|Accessories","eras": "Pre-1960s|1960s-70s|1980s-90s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Vintage and antique eyewear specialist - thousands of frames from the 1800s onward. Costume designers shop here.","verified": "no","notes": ""},{"name": "Mr. Throwback","address": "437 E 9th St","neighborhood": "East Village","lat": "40.7272","lng": "-73.9821","type": "Vintage boutique","price": "2","goods": "Clothing|Accessories","eras": "1990s-Y2K","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "1990s sportswear: jerseys, starter jackets, snapbacks, basketball cards.","verified": "no","notes": ""},{"name": "No Relation Vintage","address": "204 First Ave","neighborhood": "East Village","lat": "40.7302","lng": "-73.9836","type": "Vintage boutique","price": "1","goods": "Clothing|Accessories","eras": "1980s-90s|1990s-Y2K","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Part of the L Train Vintage family - high volume, thrift-adjacent pricing, organized by category rather than curated.","verified": "no","notes": ""},{"name": "Rue St. Denis","address": "170 Avenue B","neighborhood": "East Village","lat": "40.7278","lng": "-73.9787","type": "Archive & designer","price": "3","goods": "Clothing|Accessories","eras": "Pre-1960s|1960s-70s|1980s-90s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Deadstock specialist: never-worn garments from decades past, kept in near-museum condition.","verified": "no","notes": ""},{"name": "Lost City Arts","address": "18 Cooper Sq","neighborhood": "East Village","lat": "40.7281","lng": "-73.9911","type": "Home & furniture","price": "3","goods": "Furniture|Art|Housewares","eras": "1960s-70s|1980s-90s","nonprofit": "no","buysell": "Sells only","hours": "","link": "https://lostcityarts.com","blurb": "Twentieth-century design: industrial lighting, mid-century seating, salvaged signage and architectural pieces.","verified": "no","notes": ""},{"name": "White Trash NYC","address": "304 E 5th St","neighborhood": "East Village","lat": "40.7265","lng": "-73.9870","type": "Home & furniture","price": "2","goods": "Furniture|Housewares|Art","eras": "1960s-70s|1980s-90s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Mid-century furniture and oddball housewares crammed into a narrow storefront.","verified": "no","notes": "Verify still open"},{"name": "Good Records NYC","address": "218 E 5th St","neighborhood": "East Village","lat": "40.7272","lng": "-73.9893","type": "Books & records","price": "2","goods": "Records","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "Used vinyl with a careful jazz, soul and reissue selection; buys collections.","verified": "no","notes": ""},{"name": "A1 Record Shop","address": "439 E 6th St","neighborhood": "East Village","lat": "40.7252","lng": "-73.9838","type": "Books & records","price": "2","goods": "Records","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "Crate-digger's shop - dance, hip-hop, disco and house, plus dollar bins by the door.","verified": "no","notes": ""},{"name": "Gimme Gimme Records","address": "325 E 5th St","neighborhood": "East Village","lat": "40.7263","lng": "-73.9868","type": "Books & records","price": "2","goods": "Records","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "Used rock, punk and reggae vinyl in a small, well-priced room.","verified": "no","notes": ""},{"name": "East Village Books","address": "99 St Marks Pl","neighborhood": "East Village","lat": "40.7277","lng": "-73.9847","type": "Books & records","price": "1","goods": "Books|Records","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "Secondhand books spilling onto the sidewalk; cheap paperbacks and a decent art and poetry section.","verified": "no","notes": ""},{"name": "Mast Books","address": "72 Avenue A","neighborhood": "East Village","lat": "40.7243","lng": "-73.9843","type": "Books & records","price": "2","goods": "Books|Art","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "https://mastbooks.com","blurb": "Used and out-of-print art, photography and design books, selected with an editor's eye.","verified": "no","notes": ""},{"name": "Alabaster Bookshop","address": "122 Fourth Ave","neighborhood": "East Village","lat": "40.7322","lng": "-73.9899","type": "Books & records","price": "2","goods": "Books","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "The last survivor of Book Row - used and rare titles on Fourth Avenue.","verified": "no","notes": ""},{"name": "Strand Book Store","address": "828 Broadway","neighborhood": "Union Square","lat": "40.7331","lng": "-73.9909","type": "Books & records","price": "2","goods": "Books|Art","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "https://strandbooks.com","blurb": "Eighteen miles of books, a large used and review-copy trade, and a buying desk that takes your old ones.","verified": "no","notes": "Just outside the LES/EV line - included as a boundary case"},{"name": "Codex Books","address": "1 Bleecker St","neighborhood": "NoHo","lat": "40.7256","lng": "-73.9922","type": "Books & records","price": "2","goods": "Books","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "Small, sharply selected used and rare bookshop at the top of the Bowery.","verified": "no","notes": ""},{"name": "David Owens Vintage","address": "154 Orchard St","neighborhood": "Lower East Side","lat": "40.7208","lng": "-73.9887","type": "Archive & designer","price": "3","goods": "Clothing|Accessories","eras": "Pre-1960s|1960s-70s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Decades-deep Orchard Street vintage with real depth in early denim, workwear and military.","verified": "no","notes": ""},{"name": "Edith Machinist","address": "104 Rivington St","neighborhood": "Lower East Side","lat": "40.7202","lng": "-73.9873","type": "Vintage boutique","price": "3","goods": "Clothing|Accessories|Jewelry","eras": "Pre-1960s|1960s-70s|1980s-90s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Curated womenswear vintage - slips, boots, bags - with a soft, well-edited feel.","verified": "no","notes": ""},{"name": "Procell","address": "5 Delancey St","neighborhood": "Lower East Side","lat": "40.7203","lng": "-73.9932","type": "Archive & designer","price": "3","goods": "Clothing","eras": "1980s-90s|1990s-Y2K","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Archive graphic tees and band shirts at collector prices. As much reference library as shop.","verified": "no","notes": ""},{"name": "Marmalade Vintage","address": "174 Rivington St","neighborhood": "Lower East Side","lat": "40.7197","lng": "-73.9843","type": "Vintage boutique","price": "2","goods": "Clothing|Accessories","eras": "1960s-70s|1980s-90s|1990s-Y2K","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Affordable general vintage with a party-clothes streak.","verified": "no","notes": "Address needs confirming"},{"name": "Sweet Pickle Books","address": "47 Orchard St","neighborhood": "Lower East Side","lat": "40.7168","lng": "-73.9911","type": "Books & records","price": "1","goods": "Books","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "https://sweetpicklebooks.com","blurb": "Used books and house-made pickles - trade a jar for a book. Genuinely one of the odder reuse economies in the city.","verified": "no","notes": ""},{"name": "Bluestockings Cooperative","address": "116 Suffolk St","neighborhood": "Lower East Side","lat": "40.7200","lng": "-73.9857","type": "Books & records","price": "2","goods": "Books","eras": "Mixed","nonprofit": "yes","buysell": "Sells only","hours": "","link": "https://bluestockings.com","blurb": "Worker-owned radical bookstore and cafe; new and used titles, plus free community programming.","verified": "no","notes": ""},{"name": "James Veloria","address": "75 E Broadway","neighborhood": "Chinatown","lat": "40.7136","lng": "-73.9944","type": "Archive & designer","price": "3","goods": "Clothing|Accessories","eras": "1980s-90s|1990s-Y2K","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Upstairs in the Elizabeth Center mall - tightly curated designer vintage, strong on 90s Japanese and European labels.","verified": "no","notes": ""},{"name": "Downtown Music Gallery","address": "13 Monroe St","neighborhood": "Two Bridges","lat": "40.7124","lng": "-73.9932","type": "Books & records","price": "2","goods": "Records","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "https://downtownmusicgallery.com","blurb": "Avant-garde, jazz and experimental records, new and used, in a basement under the Manhattan Bridge.","verified": "no","notes": ""},{"name": "Hester Street Fair","address": "Hester St at Essex St","neighborhood": "Lower East Side","lat": "40.7157","lng": "-73.9887","type": "Flea & market","price": "1","goods": "Clothing|Housewares|Jewelry|Art","eras": "Mixed","nonprofit": "no","buysell": "Sells only","hours": "Seasonal weekends","link": "https://hesterstreetfair.com","blurb": "Open-air weekend market with rotating vintage and secondhand vendors. Seasonal - check before you go.","verified": "no","notes": "Seasonal; confirm current season dates"},{"name": "Housing Works Bookstore Cafe","address": "126 Crosby St","neighborhood": "NoLIta","lat": "40.7247","lng": "-73.9962","type": "Thrift & charity","price": "1","goods": "Books|Records","eras": "Mixed","nonprofit": "yes","buysell": "Sells only","hours": "","link": "https://www.housingworks.org/bookstore","blurb": "All-donated books and records; every dollar funds Housing Works' services for New Yorkers living with HIV/AIDS and homelessness.","verified": "no","notes": ""},{"name": "INA NY","address": "21 Prince St","neighborhood": "NoLIta","lat": "40.7233","lng": "-73.9946","type": "Consignment","price": "3","goods": "Clothing|Accessories","eras": "1990s-Y2K|Y2K-2010s","nonprofit": "no","buysell": "Consignment","hours": "","link": "","blurb": "Long-standing designer consignment; takes in-season pieces from the public and resells them.","verified": "no","notes": "Confirm this location is still open"}]/*__ENDSEED__*/;
 
-/* ── map ──────────────────────────────────────────────────────────────── */
-var map = L.map('map',{zoomControl:false}).setView([40.7235,-73.9875],14);
-L.control.zoom({position:'bottomleft'}).addTo(map);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-  {attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:19}).addTo(map);
-
-var SHOPS=[], markers=[], routeLayers=L.layerGroup().addTo(map), activeRoute=null;
+var SHOPS=[], markers=[], map=null, routeLayers=null, activeRoute=null, view='map';
+var HAS_MAP = (typeof L !== 'undefined' && L && L.map);
 var ADMIN = new URLSearchParams(location.search).get('admin')==='1';
 var state = {q:'',types:{},goods:{},eras:{},price:0,nonprofit:false,buys:false};
 
-/* ── CSV parsing (handles quoted fields and embedded newlines) ─────────── */
+function warn(msg){
+  var w=document.getElementById('warn');
+  w.innerHTML=msg; w.style.display='block';
+}
+
+/* ── CSV parsing (quoted fields, embedded newlines) ───────────────────── */
 function parseCSV(text){
   var rows=[],row=[],cell='',q=false,i=0;
   text=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
   for(;i<text.length;i++){
     var c=text[i];
-    if(q){
-      if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; }
-      else cell+=c;
-    } else if(c==='"'){ q=true; }
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; } else cell+=c; }
+    else if(c==='"'){ q=true; }
     else if(c===','){ row.push(cell); cell=''; }
     else if(c==='\n'){ row.push(cell); cell=''; rows.push(row); row=[]; }
     else cell+=c;
@@ -194,7 +277,7 @@ function parseCSV(text){
     var o={}; head.forEach(function(h,n){o[h]=(r[n]||'').trim();}); return o;
   });
 }
-
+function splitList(s){ return (s||'').split('|').map(function(x){return x.trim();}).filter(Boolean); }
 function normalise(r){
   var lat=parseFloat(r.lat), lng=parseFloat(r.lng);
   return {
@@ -205,50 +288,43 @@ function normalise(r){
     goods:splitList(r.goods), eras:splitList(r.eras),
     nonprofit:/^(y|yes|true|1)$/i.test(r.nonprofit||''),
     buysell:splitList(r.buysell), hours:r.hours||'', link:r.link||'',
-    blurb:r.blurb||'', verified:/^(y|yes|true|1)$/i.test(r.verified||''),
-    notes:r.notes||''
+    blurb:r.blurb||'', verified:/^(y|yes|true|1)$/i.test(r.verified||''), notes:r.notes||''
   };
 }
-function splitList(s){ return (s||'').split('|').map(function(x){return x.trim();}).filter(Boolean); }
 
-/* ── loading: Google Sheet → shops.csv → built-in seed ─────────────────── */
+/* ── loading: Google Sheet → shops.csv → built-in copy ────────────────── */
 function sheetCsvUrl(u){
   if(!u) return null;
-  if(/output=csv/.test(u)) return u;                                  // already a published CSV link
-  var m=u.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);               // ordinary sheet URL or bare ID
+  if(/output=csv/.test(u)) return u;
+  var m=u.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
   var id=m?m[1]:(/^[a-zA-Z0-9-_]{20,}$/.test(u.trim())?u.trim():null);
   return id?('https://docs.google.com/spreadsheets/d/'+id+'/gviz/tq?tqx=out:csv&sheet=Shops'):null;
 }
-function setSource(name,note){
-  document.getElementById('srcname').textContent=name;
-  document.getElementById('srcnote').innerHTML=note||'';
-}
+function ok(r){ if(!r.ok) throw new Error(r.status); return r.text(); }
 function load(){
   var url=sheetCsvUrl(SHEET_URL);
-  var chain = url
-    ? fetch(url).then(ok).then(function(t){ return {rows:parseCSV(t), src:'sheet'}; })
-    : Promise.reject();
-  chain.catch(function(){
-      return fetch('shops.csv').then(ok).then(function(t){ return {rows:parseCSV(t), src:'file'}; });
-    })
-    .catch(function(){ return {rows:SEED, src:'seed'}; })
-    .then(function(res){
-      SHOPS = res.rows.map(normalise).filter(function(s){return s.name;});
-      var withPin = SHOPS.filter(function(s){return s.lat!==null;}).length;
-      if(res.src==='sheet') setSource('Live from your Google Sheet','Edits to the sheet show up here on reload.');
-      else if(res.src==='file') setSource('shops.csv (starter list)', SHEET_URL?'Google Sheet unreachable — using the file in this repo.':'Connect a Google Sheet to edit without code.');
-      else setSource('Built-in starter list','Neither the sheet nor shops.csv could be read.');
-      if(withPin<SHOPS.length) document.getElementById('srcnote').innerHTML+=' <b>'+(SHOPS.length-withPin)+'</b> row(s) have no coordinates and are hidden.';
-      build();
-    });
+  var chain = url ? fetch(url).then(ok).then(function(t){return {rows:parseCSV(t),src:'sheet'};})
+                  : Promise.reject(new Error('no sheet'));
+  chain.catch(function(){ return fetch('shops.csv').then(ok).then(function(t){return {rows:parseCSV(t),src:'file'};}); })
+       .catch(function(){ return {rows:SEED, src:'seed'}; })
+       .then(function(res){
+          SHOPS = res.rows.map(normalise).filter(function(s){return s.name;});
+          var note = res.src==='sheet' ? '<b>live from your google sheet</b>edits show up on reload.'
+                   : res.src==='file'  ? '<b>shops.csv</b>'+(SHEET_URL?'google sheet unreachable — using the file in this repo.':'connect a google sheet to edit without code.')
+                   : '<b>built-in list</b>running straight from the page — nothing external needed.';
+          var missing = SHOPS.filter(function(s){return s.lat===null;}).length;
+          if(missing) note += ' '+missing+' row(s) have no coordinates and are hidden.';
+          document.getElementById('src').innerHTML = note;
+          apply();
+       })
+       .catch(function(e){ warn('⚠ could not load any shop data: '+e.message); });
 }
-function ok(r){ if(!r.ok) throw new Error(r.status); return r.text(); }
 
-/* ── filter UI ────────────────────────────────────────────────────────── */
+/* ── filters ─────────────────────────────────────────────────────────── */
 function chip(host,label,key,colour){
   var b=document.createElement('button');
-  b.className='chip'; b.dataset.v=label;
-  b.innerHTML=(colour?'<i style="background:'+colour+'"></i>':'')+label;
+  b.className='chip'; b.type='button'; b.dataset.v=label;
+  b.innerHTML=(colour?'<i style="background:'+colour+'"></i>':'')+label.toLowerCase();
   b.onclick=function(){ state[key][label]=!state[key][label]; b.classList.toggle('on'); apply(); };
   host.appendChild(b);
 }
@@ -273,16 +349,15 @@ function buildFilters(){
   var r=document.getElementById('fRoutes'); r.innerHTML='';
   ROUTES.forEach(function(rt,i){
     var b=document.createElement('button');
-    b.className='routebtn'; b.dataset.i=i;
-    b.innerHTML='<i style="background:'+rt.color+'"></i><span><b>'+rt.name+'</b>'+rt.stops.length+' stops</span>';
+    b.className='routebtn'; b.type='button'; b.dataset.i=i;
+    b.innerHTML='<span class="dot" style="background:'+rt.color+'"></span>'+
+                '<span><b>'+rt.name.toLowerCase()+'</b><small>'+rt.stops.length+' stops</small></span>';
     b.onclick=function(){ selectRoute(activeRoute===i?null:i); };
     r.appendChild(b);
   });
 }
-
 function any(o){ for(var k in o) if(o[k]) return true; return false; }
 function hits(sel,list){ if(!any(sel)) return true; for(var k in sel) if(sel[k]&&list.indexOf(k)>-1) return true; return false; }
-
 function visible(s){
   if(s.lat===null) return false;
   if(state.q){
@@ -299,112 +374,140 @@ function visible(s){
   return true;
 }
 
-/* ── markers ──────────────────────────────────────────────────────────── */
+/* ── rendering ───────────────────────────────────────────────────────── */
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function darkText(c){ return c==='#FFE23D'||c==='#C6FF3D'; }
 function dot(s,n){
-  var c=TYPES[s.type], label=(activeRoute!==null)?'<b>'+n+'</b>':'';
-  return L.divIcon({className:'',iconSize:[n?24:16,n?24:16],iconAnchor:[n?12:8,n?12:8],
-    html:'<div style="width:100%;height:100%;border-radius:50%;background:'+c+';border:2.5px solid #fffdf8;'+
-         'box-shadow:0 2px 6px rgba(43,33,27,.4);display:flex;align-items:center;justify-content:center;'+
-         'color:#fff;font:700 11px Poppins,sans-serif">'+label+'</div>'});
+  var c=TYPES[s.type];
+  return L.divIcon({className:'',iconSize:[n?26:17,n?26:17],iconAnchor:[n?13:8.5,n?13:8.5],
+    html:'<div style="width:100%;height:100%;border-radius:50%;background:'+c+';border:2.5px solid #fff;'+
+         'box-shadow:0 0 0 2px #14082A, 0 0 11px '+c+';display:flex;align-items:center;justify-content:center;'+
+         'color:'+(darkText(c)?'#14082A':'#fff')+';font:700 11px Verdana,sans-serif">'+(n?n:'')+'</div>'});
 }
 function popup(s){
+  var c=TYPES[s.type];
   var maps='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s.name+', '+s.address+', New York, NY');
   var h='<div class="pop"><h3>'+esc(s.name)+'</h3>'+
-    '<span class="kind" style="background:'+TYPES[s.type]+'">'+esc(s.type)+' · '+'$'.repeat(s.price)+'</span>'+
+    '<span class="kind" style="background:'+c+';color:'+(darkText(c)?'#14082A':'#fff')+'">'+esc(s.type)+' · '+'$'.repeat(s.price)+'</span>'+
     '<p class="addr">'+esc(s.address)+(s.neighborhood?' · '+esc(s.neighborhood):'')+'</p>';
   if(s.blurb) h+='<p class="blurb">'+esc(s.blurb)+'</p>';
   h+='<dl>';
-  if(s.hours) h+='<dt>Hours</dt><dd>'+esc(s.hours)+'</dd>';
-  if(s.buysell.length) h+='<dt>Takes stuff</dt><dd>'+esc(s.buysell.join(', '))+'</dd>';
-  if(s.nonprofit) h+='<dt>Mission</dt><dd>Nonprofit / mission-driven</dd>';
+  if(s.hours) h+='<dt>hours</dt><dd>'+esc(s.hours)+'</dd>';
+  if(s.buysell.length) h+='<dt>takes stuff</dt><dd>'+esc(s.buysell.join(', '))+'</dd>';
+  if(s.nonprofit) h+='<dt>mission</dt><dd>nonprofit / mission-driven</dd>';
   h+='</dl>';
-  if(s.eras.length||s.goods.length){
+  if(s.eras.length||s.goods.length)
     h+='<div class="tags">'+s.goods.concat(s.eras).map(function(t){return '<span>'+esc(t)+'</span>';}).join('')+'</div>';
-  }
-  h+='<div class="links"><a class="go" href="'+maps+'" target="_blank" rel="noopener">Directions ↗</a>'+
-     (s.link?'<a class="web" href="'+esc(s.link)+'" target="_blank" rel="noopener">Website ↗</a>':'')+'</div>';
-  if(!s.verified){
-    h+='<div class="unv">Not yet verified — hours, and whether it is still open, need confirming.'+
-       (FORM_URL?' <a href="'+FORM_URL+'" target="_blank" rel="noopener">Tell us what you found ↗</a>':'')+'</div>';
-  }
+  h+='<div class="links"><a class="go" href="'+maps+'" target="_blank" rel="noopener">directions ↗</a>'+
+     (s.link?'<a class="web" href="'+esc(s.link)+'" target="_blank" rel="noopener">website ↗</a>':'')+'</div>';
+  if(!s.verified)
+    h+='<div class="unv">⚠ not verified yet — hours, and whether it is still open, need confirming.'+
+       (FORM_URL?' <a href="'+FORM_URL+'" target="_blank" rel="noopener">tell us what you found ↗</a>':'')+'</div>';
   return h+'</div>';
 }
-function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function card(s,n){
+  var c=TYPES[s.type];
+  return '<div class="card"><h3>'+(n?n+'. ':'')+esc(s.name)+'</h3>'+
+    '<p class="a"><span class="kind" style="display:inline-block;background:'+c+';color:'+(darkText(c)?'#14082A':'#fff')+
+    ';border:2px solid #14082A;border-radius:11px;padding:1px 7px;font:700 9px Verdana;text-transform:uppercase">'+
+    esc(s.type)+' · '+'$'.repeat(s.price)+'</span><br/>'+esc(s.address)+'</p>'+
+    (s.blurb?'<p class="b">'+esc(s.blurb)+'</p>':'')+'</div>';
+}
 
 function apply(){
-  markers.forEach(function(m){ map.removeLayer(m); }); markers=[];
   var list = SHOPS.filter(visible);
   if(activeRoute!==null){
     var order=ROUTES[activeRoute].stops;
     list.sort(function(a,b){ return order.indexOf(a.name)-order.indexOf(b.name); });
   }
-  list.forEach(function(s,i){
-    var m=L.marker([s.lat,s.lng],{icon:dot(s,activeRoute!==null?i+1:0),draggable:ADMIN})
-          .bindPopup(popup(s),{maxWidth:280});
-    if(ADMIN) m.on('dragend',function(e){ var p=e.target.getLatLng(); s.lat=+p.lat.toFixed(5); s.lng=+p.lng.toFixed(5); adminOut(); });
-    m.addTo(map); markers.push(m);
-  });
-  drawRoute(list);
-  var n=list.length, tot=SHOPS.filter(function(s){return s.lat!==null;}).length;
+  if(HAS_MAP && map){
+    markers.forEach(function(m){ map.removeLayer(m); }); markers=[];
+    list.forEach(function(s,i){
+      var m=L.marker([s.lat,s.lng],{icon:dot(s,activeRoute!==null?i+1:0),draggable:ADMIN})
+            .bindPopup(popup(s),{maxWidth:280});
+      if(ADMIN) m.on('dragend',function(e){ var p=e.target.getLatLng(); s.lat=+p.lat.toFixed(5); s.lng=+p.lng.toFixed(5); adminOut(); });
+      m.addTo(map); markers.push(m);
+    });
+    drawRoute(list);
+  }
+  document.getElementById('listwrap').innerHTML =
+    list.length ? list.map(function(s,i){ return card(s,activeRoute!==null?i+1:0); }).join('')
+                : '<div class="card"><h3>nothing matches</h3><p class="b">Try clearing a filter or two.</p></div>';
+  routeCard(list);
+
+  var tot=SHOPS.filter(function(s){return s.lat!==null;}).length;
   var unv=SHOPS.filter(function(s){return !s.verified;}).length;
-  document.getElementById('count').innerHTML='<b>'+n+'</b> of '+tot+' shops shown'+
-    (unv?' · <b>'+unv+'</b> still unverified':'');
+  document.getElementById('count').innerHTML='<b>'+list.length+'</b> of '+tot+' shops shown'+
+    (unv?'<br/>'+unv+' still need verifying':'');
 }
 
 function drawRoute(list){
+  if(!routeLayers) return;
   routeLayers.clearLayers();
-  document.getElementById('routecard').style.display='none';
   if(activeRoute===null) return;
-  var rt=ROUTES[activeRoute];
   var pts=list.map(function(s){return [s.lat,s.lng];});
-  if(pts.length>1) L.polyline(pts,{color:rt.color,weight:3,opacity:.75,dashArray:'7 7'}).addTo(routeLayers);
-  var card=document.getElementById('routecard');
+  if(pts.length>1){
+    L.polyline(pts,{color:'#14082A',weight:6,opacity:.9}).addTo(routeLayers);
+    L.polyline(pts,{color:ROUTES[activeRoute].color,weight:3,opacity:1,dashArray:'8 6'}).addTo(routeLayers);
+  }
+  if(pts.length) map.fitBounds(L.latLngBounds(pts).pad(.2));
+}
+function routeCard(list){
+  var rc=document.getElementById('rc');
+  if(activeRoute===null){ rc.style.display='none'; return; }
+  var rt=ROUTES[activeRoute];
   document.getElementById('rcName').textContent=rt.name;
   document.getElementById('rcDesc').textContent=rt.desc;
   var ol=document.getElementById('rcList'); ol.innerHTML='';
   list.forEach(function(s,i){
     var li=document.createElement('li'); li.textContent=s.name;
-    li.onclick=function(){ map.setView([s.lat,s.lng],17); markers[i].openPopup(); };
+    li.onclick=function(){
+      if(HAS_MAP&&map){ setView('map'); map.setView([s.lat,s.lng],17); if(markers[i]) markers[i].openPopup(); }
+    };
     ol.appendChild(li);
   });
-  card.style.display='block';
-  if(pts.length) map.fitBounds(L.latLngBounds(pts).pad(.18));
+  rc.style.display='block';
 }
-
 function selectRoute(i){
   activeRoute=i;
   document.querySelectorAll('.routebtn').forEach(function(b){ b.classList.toggle('on',+b.dataset.i===i); });
   apply();
-  if(i===null) map.setView([40.7235,-73.9875],14);
+  if(i===null && HAS_MAP && map) map.setView([40.7235,-73.9875],14);
 }
 
-/* ── admin: drag pins, copy corrected coordinates ─────────────────────── */
+/* ── map / list toggle ───────────────────────────────────────────────── */
+function setView(v){
+  view=v;
+  document.getElementById('listwrap').style.display = v==='list'?'block':'none';
+  document.getElementById('vMap').classList.toggle('on',v==='map');
+  document.getElementById('vList').classList.toggle('on',v==='list');
+  if(v==='map' && map) map.invalidateSize();
+}
+
+/* ── admin pin-fixing ────────────────────────────────────────────────── */
 function adminOut(){
-  var box=document.getElementById('adminBox');
-  box.value = 'name,lat,lng\n' + SHOPS.filter(function(s){return s.lat!==null;})
+  var box=document.getElementById('adminBox'); if(!box) return;
+  box.value='name,lat,lng\n'+SHOPS.filter(function(s){return s.lat!==null;})
     .map(function(s){ return '"'+s.name.replace(/"/g,'""')+'",'+s.lat+','+s.lng; }).join('\n');
 }
 function buildAdmin(){
   var d=document.createElement('div');
-  d.className='panel'; d.style.cssText='position:absolute;bottom:14px;left:14px;z-index:1000;width:290px;padding:13px 14px';
-  d.innerHTML='<p class="lbl" style="margin:0 0 6px">Pin-fixing mode</p>'+
-    '<p style="font-size:10.5px;color:var(--muted);margin:0 0 8px;line-height:1.45">Drag any pin to its true doorway, then paste these three columns back into the <b>lat</b> and <b>lng</b> columns of the sheet.</p>'+
-    '<textarea id="adminBox" style="width:100%;height:110px;font:400 10px ui-monospace,monospace;border:1px solid var(--line);border-radius:8px;padding:7px"></textarea>'+
-    '<button class="btn btn-primary" id="adminCopy" style="margin-top:7px">Copy all coordinates</button>';
-  document.body.appendChild(d);
+  d.className='blk';
+  d.innerHTML='<p class="lbl"><b>✦</b> pin-fixing mode</p>'+
+    '<p style="font-size:9.5px;line-height:1.55;margin:0 0 7px;color:#4a3a63">Drag any pin to its real doorway, then paste these columns back into the sheet.</p>'+
+    '<textarea id="adminBox" style="width:100%;height:100px;font:400 9px ui-monospace,monospace;border:2px solid #14082A;border-radius:8px;padding:6px"></textarea>'+
+    '<button class="btn" id="adminCopy">copy all coordinates</button>';
+  document.getElementById('side').appendChild(d);
   document.getElementById('adminCopy').onclick=function(){
-    var t=document.getElementById('adminBox'); t.select(); document.execCommand('copy');
-    this.textContent='Copied ✓'; var b=this; setTimeout(function(){b.textContent='Copy all coordinates';},1600);
+    var t=document.getElementById('adminBox'); t.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    var b=this; b.textContent='copied ✓'; setTimeout(function(){b.textContent='copy all coordinates';},1600);
   };
   adminOut();
 }
 
-/* ── boot ─────────────────────────────────────────────────────────────── */
-function build(){
-  buildFilters();
-  if(ADMIN) buildAdmin();
-  apply();
-}
+/* ── boot: filters first, so the UI exists even if the map can't ─────── */
+buildFilters();
 document.getElementById('resetBtn').onclick=function(){
   state={q:'',types:{},goods:{},eras:{},price:0,nonprofit:false,buys:false};
   document.getElementById('search').value='';
@@ -414,17 +517,36 @@ document.getElementById('resetBtn').onclick=function(){
   document.querySelectorAll('#fPrice button').forEach(function(b,i){b.classList.toggle('on',i===0);});
   selectRoute(null);
 };
-document.getElementById('toggle').onclick=function(){
-  var c=document.getElementById('controls'); c.classList.toggle('hidden');
-};
-if(window.innerWidth<=760) document.getElementById('controls').classList.add('hidden');
+document.getElementById('vMap').onclick=function(){ setView('map'); };
+document.getElementById('vList').onclick=function(){ setView('list'); };
 
 var add=document.getElementById('addBtn');
 if(FORM_URL){ add.href=FORM_URL; } else { add.style.display='none'; }
 document.getElementById('note').innerHTML =
-  'This is a starter list, not a finished one — every entry still needs someone to walk past and confirm it. '+
-  'Shops open and close fast here; if something is wrong'+(FORM_URL?', <a href="'+FORM_URL+'" target="_blank" rel="noopener">tell us</a>':', let us know')+'. '+
-  'Pin positions are block-accurate estimates until verified. Add <code>?admin=1</code> to the address bar to drag pins into place.';
+  'A starter list, not a finished one — every entry still needs someone to walk past and confirm it. '+
+  'Shops here open and close fast. Pin positions are block-accurate until verified; '+
+  'add <code>?admin=1</code> to the address bar to drag them into place.';
+
+if(HAS_MAP){
+  try{
+    map = L.map('map',{zoomControl:false}).setView([40.7235,-73.9875],14);
+    L.control.zoom({position:'bottomright'}).addTo(map);
+    var tiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      {attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:19});
+    var tileFails=0;
+    tiles.on('tileerror',function(){
+      if(++tileFails===6) warn('⚠ basemap tiles are blocked here, so the background is empty — pins, filters and routes all still work. It looks normal on a live web server.');
+    });
+    tiles.addTo(map);
+    routeLayers = L.layerGroup().addTo(map);
+    if(ADMIN) buildAdmin();
+  }catch(e){
+    HAS_MAP=false; warn('⚠ the map could not start ('+e.message+') — showing the list instead.');
+  }
+}else{
+  warn('⚠ leaflet.js did not load, so there is no map — showing the list instead. Check that the <b>vendor</b> folder sits next to this file.');
+}
+if(!HAS_MAP){ setView('list'); document.getElementById('viewseg').style.display='none'; }
 
 load();
 </script>
