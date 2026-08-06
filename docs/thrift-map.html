@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Secondhand LES &amp; East Village — a reuse map</title>
+<meta name="description" content="An interactive map of vintage, thrift, consignment and secondhand shops in the Lower East Side and East Village, with suggested walking routes."/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --clay:#A8442A;--rust:#7E2F1B;--mustard:#E0A93B;--cream:#F8F3E9;--paper:#fffdf8;
+  --ink:#2B211B;--muted:#7A6A5E;--line:#E2D5C1;--forest:#2D5F2B;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:'Lexend',sans-serif;color:var(--ink);overscroll-behavior:none}
+#map{position:absolute;inset:0;background:var(--cream)}
+.panel{background:rgba(255,253,248,.975);border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 26px rgba(43,33,27,.16)}
+#controls{position:absolute;z-index:1000;top:14px;left:14px;width:290px;max-height:calc(100% - 28px);overflow-y:auto;padding:16px 16px 14px}
+h1{font-family:'Poppins';font-weight:700;font-size:17px;margin:0 0 2px;color:var(--rust);line-height:1.2}
+.sub{font-size:11px;color:var(--muted);margin:0 0 12px;line-height:1.45}
+.lbl{font-family:'Poppins';font-weight:600;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--clay);margin:14px 0 6px}
+.lbl:first-of-type{margin-top:0}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:20px;padding:4px 9px;font:400 10.5px 'Lexend';color:#5c4f45;cursor:pointer;display:flex;align-items:center;gap:5px;transition:.12s}
+.chip:hover{border-color:var(--clay)}
+.chip.on{background:var(--clay);border-color:var(--clay);color:#fff}
+.chip i{width:8px;height:8px;border-radius:50%;flex:none}
+.chip.on i{box-shadow:0 0 0 1.5px #fff inset}
+#search{width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font:400 12px 'Lexend';color:var(--ink);background:#fff}
+#search:focus{outline:none;border-color:var(--clay)}
+.seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{flex:1;border:0;background:#fff;padding:7px 3px;font:500 11px 'Lexend';color:#5c4f45;cursor:pointer}
+.seg button.on{background:var(--clay);color:#fff}
+.seg button+button{border-left:1px solid var(--line)}
+.toggle{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#5c4f45;margin-top:7px;cursor:pointer}
+.toggle input{accent-color:var(--clay);width:14px;height:14px;margin:0}
+.routebtn{width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;margin-top:6px;cursor:pointer;font:400 11.5px 'Lexend';color:#5c4f45;display:flex;align-items:center;gap:8px}
+.routebtn b{font-family:'Poppins';font-weight:600;font-size:11.5px;color:var(--ink);display:block}
+.routebtn span{font-size:10px;color:var(--muted)}
+.routebtn i{width:14px;height:3px;border-radius:2px;flex:none}
+.routebtn.on{border-color:var(--clay);background:#fdf4ee}
+#count{font-size:11px;color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
+#count b{font-family:'Poppins';color:var(--rust)}
+.actions{display:flex;gap:6px;margin-top:10px}
+.btn{flex:1;border:0;border-radius:9px;padding:9px 6px;font:600 11px 'Poppins';cursor:pointer;text-align:center;text-decoration:none;display:block}
+.btn-primary{background:var(--mustard);color:#4a3410}
+.btn-ghost{background:#fff;border:1px solid var(--line);color:#5c4f45}
+.note{font-size:10px;line-height:1.5;color:var(--muted);border-top:1px dashed var(--line);padding-top:10px;margin-top:12px}
+.note a{color:var(--clay)}
+#src{position:absolute;top:14px;right:14px;z-index:1000;padding:7px 12px;font:400 10.5px 'Lexend';color:var(--muted);max-width:210px;line-height:1.4}
+#src b{font-family:'Poppins';font-weight:600;color:var(--ink)}
+#routecard{position:absolute;bottom:14px;right:14px;z-index:1000;width:250px;padding:13px 14px;display:none;max-height:52%;overflow-y:auto}
+#routecard h2{font-family:'Poppins';font-size:13px;margin:0 0 3px;color:var(--rust)}
+#routecard p{font-size:10.5px;color:var(--muted);margin:0 0 9px;line-height:1.45}
+#routecard ol{margin:0;padding-left:20px;font-size:11.5px;line-height:1.7}
+#routecard li{cursor:pointer;color:#5c4f45}
+#routecard li:hover{color:var(--clay);text-decoration:underline}
+.leaflet-popup-content-wrapper{border-radius:13px;box-shadow:0 8px 28px rgba(43,33,27,.22)}
+.leaflet-popup-content{margin:14px 15px;font-family:'Lexend';width:245px!important}
+.pop h3{font-family:'Poppins';font-weight:600;font-size:14.5px;margin:0 0 4px;line-height:1.25;color:var(--ink)}
+.pop .kind{display:inline-block;font-size:9.5px;font-family:'Poppins';font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#fff;padding:3px 7px;border-radius:5px;margin-bottom:8px}
+.pop .addr{font-size:11.5px;color:var(--muted);margin:0 0 6px;line-height:1.45}
+.pop .blurb{font-size:12px;line-height:1.55;margin:0 0 9px}
+.pop dl{margin:0 0 9px;display:grid;grid-template-columns:auto 1fr;gap:3px 9px;font-size:11px}
+.pop dt{color:var(--muted)}
+.pop dd{margin:0;color:var(--ink)}
+.pop .tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px}
+.pop .tags span{font-size:9.5px;background:#f2e9db;color:#6b5a4a;padding:3px 7px;border-radius:11px}
+.pop .links{display:flex;gap:6px}
+.pop .links a{flex:1;text-align:center;font:600 10.5px 'Poppins';padding:7px 4px;border-radius:8px;text-decoration:none}
+.pop .links a.go{background:var(--clay);color:#fff}
+.pop .links a.web{background:#fff;border:1px solid var(--line);color:#5c4f45}
+.pop .unv{font-size:10px;color:#8a6a1e;background:#fdf5e2;border:1px solid #f0e0b8;border-radius:7px;padding:6px 8px;margin-top:9px;line-height:1.45}
+.pop .unv a{color:#8a6a1e}
+#toggle{display:none}
+@media (max-width:760px){
+  #controls{top:auto;bottom:0;left:0;width:100%;max-width:100%;border-radius:16px 16px 0 0;max-height:62%;padding:12px 14px 16px}
+  #toggle{display:block;position:absolute;bottom:0;left:0;width:100%;z-index:1001;border:0;background:var(--clay);color:#fff;font:600 12px 'Poppins';padding:12px;cursor:pointer}
+  #controls.hidden{display:none}
+  #controls.shown+#toggle{background:var(--rust)}
+  #routecard{display:none!important}
+  #src{top:10px;right:10px;left:10px;max-width:none}
+  .leaflet-popup-content{width:210px!important}
+}
+</style></head><body>
+<div id="map"></div>
+
+<div id="src" class="panel"><b id="srcname">Loading…</b><div id="srcnote"></div></div>
+
+<div id="controls" class="panel">
+  <h1>Secondhand LES &amp; East Village</h1>
+  <p class="sub">Vintage, thrift, consignment and resale — everything below keeps usable things out of the waste stream. A project of the <a href="https://www.lesecologycenter.org" style="color:var(--clay)">Lower East Side Ecology Center</a>.</p>
+
+  <input id="search" type="search" placeholder="Search shops…" autocomplete="off"/>
+
+  <p class="lbl">Kind of shop</p>
+  <div class="chips" id="fType"></div>
+
+  <p class="lbl">Price</p>
+  <div class="seg" id="fPrice">
+    <button data-p="0" class="on">All</button><button data-p="1">$</button><button data-p="2">$$</button><button data-p="3">$$$</button>
+  </div>
+
+  <p class="lbl">What they sell</p>
+  <div class="chips" id="fGoods"></div>
+
+  <p class="lbl">Era</p>
+  <div class="chips" id="fEra"></div>
+
+  <p class="lbl">Only show</p>
+  <label class="toggle"><input type="checkbox" id="fNonprofit"/> Nonprofit &amp; mission-driven</label>
+  <label class="toggle"><input type="checkbox" id="fBuys"/> Places that take your stuff</label>
+
+  <p class="lbl">Walking routes</p>
+  <div id="fRoutes"></div>
+
+  <div id="count"></div>
+
+  <div class="actions">
+    <a class="btn btn-primary" id="addBtn" href="#" target="_blank" rel="noopener">+ Add a shop</a>
+    <button class="btn btn-ghost" id="resetBtn">Reset filters</button>
+  </div>
+
+  <p class="note" id="note"></p>
+</div>
+<button id="toggle">Filters &amp; routes</button>
+
+<div id="routecard" class="panel"><h2 id="rcName"></h2><p id="rcDesc"></p><ol id="rcList"></ol></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ─────────────────────────────────────────────────────────────────────────
+   CONFIGURE ME — see THRIFT_MAP_SETUP.md
+   SHEET_URL: paste the "Publish to web → CSV" link for the Shops tab.
+              Leave blank and the map falls back to shops.csv / the built-in list.
+   FORM_URL:  paste the public link to your "Add or fix a shop" Google Form.
+   ───────────────────────────────────────────────────────────────────────── */
+var SHEET_URL = '';
+var FORM_URL  = '';
+
+var TYPES = {
+  'Vintage boutique'  : '#A8442A',
+  'Thrift & charity'  : '#2D7D5A',
+  'Consignment'       : '#C77B2B',
+  'Archive & designer': '#6A4C93',
+  'Books & records'   : '#2F6D8F',
+  'Home & furniture'  : '#8A6A3B',
+  'Flea & market'     : '#C2436B'
+};
+var GOODS = ['Clothing','Accessories','Jewelry','Eyewear','Housewares','Furniture','Books','Records','Art'];
+var ERAS  = ['Pre-1960s','1960s-70s','1970s-80s','1980s-90s','1990s-Y2K','Y2K-2010s','Mixed'];
+
+var ROUTES = [
+  { name:'East 7th to 11th ramble', color:'#A8442A',
+    desc:'The densest run of vintage in the East Village — about 25 minutes of walking, a full afternoon if you actually stop.',
+    stops:['Metropolis Vintage','Search & Destroy','East Village Books','Tokio 7','AuH2O Thriftique','Trash and Vaudeville','Village Style','Cobblestones','Fabulous Fanny\'s','Buffalo Exchange','Tokyo Joe','No Relation Vintage'] },
+  { name:'Orchard & Ludlow loop', color:'#6A4C93',
+    desc:'The old garment blocks of the Lower East Side, now archive vintage and small bookshops. Ends at the Hester Street Fair — weekends and warm months only.',
+    stops:['Procell','Edith Machinist','David Owens Vintage','Marmalade Vintage','Bluestockings Cooperative','Sweet Pickle Books','Hester Street Fair','James Veloria'] },
+  { name:'Books, records & reuse', color:'#2F6D8F',
+    desc:'Paper and vinyl, plus the two most donation-driven shops on the map. Every stop on this route also buys or takes what you bring in.',
+    stops:['Strand Book Store','Alabaster Bookshop','Cure Thrift Shop','Good Records NYC','Gimme Gimme Records','Mast Books','A1 Record Shop','Codex Books','Housing Works Bookstore Cafe'] }
+];
+
+var SEED = /*__SEED__*/[{"name": "Tokio 7","address": "83 E 7th St","neighborhood": "East Village","lat": "40.7267","lng": "-73.9862","type": "Consignment","price": "3","goods": "Clothing|Accessories","eras": "1980s-90s|Y2K-2010s","nonprofit": "no","buysell": "Consignment","hours": "","link": "","blurb": "Long-running designer consignment in a basement space; strong on Japanese labels and archive runway pieces.","verified": "no","notes": ""},{"name": "AuH2O Thriftique","address": "84 E 7th St","neighborhood": "East Village","lat": "40.7268","lng": "-73.9863","type": "Thrift & charity","price": "1","goods": "Clothing|Accessories","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "Tightly packed thrift-priced racks with a punk and party-dress bent. Owner-curated rather than donation-sorted.","verified": "no","notes": ""},{"name": "Village Style","address": "111 E 7th St","neighborhood": "East Village","lat": "40.7261","lng": "-73.9848","type": "Vintage boutique","price": "2","goods": "Clothing|Accessories","eras": "1960s-70s|1980s-90s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Dense basement vintage; denim, leather, band tees and workwear stacked to the ceiling.","verified": "no","notes": ""},{"name": "Trash and Vaudeville","address": "96 E 7th St","neighborhood": "East Village","lat": "40.7266","lng": "-73.9857","type": "Vintage boutique","price": "2","goods": "Clothing|Accessories","eras": "1970s-80s|Mixed","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "East Village punk institution since 1975. Mostly new reproduction rather than true vintage, but the reason half the block still dresses this way.","verified": "no","notes": "Mostly new stock - included for context; flag if you want vintage-only"},{"name": "Search & Destroy","address": "25 St Marks Pl","neighborhood": "East Village","lat": "40.7290","lng": "-73.9882","type": "Vintage boutique","price": "2","goods": "Clothing|Accessories","eras": "1970s-80s|1980s-90s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Studs, tartan, customized leather and secondhand punk on a wall of pinned-up stock.","verified": "no","notes": ""},{"name": "Metropolis Vintage","address": "43 Third Ave","neighborhood": "East Village","lat": "40.7300","lng": "-73.9885","type": "Vintage boutique","price": "2","goods": "Clothing|Accessories","eras": "1960s-70s|1980s-90s","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "Broad general vintage: tees, western shirts, varsity jackets, sunglasses. A good first stop for orientation.","verified": "no","notes": ""},{"name": "Stock Vintage","address": "143 E 13th St","neighborhood": "East Village","lat": "40.7318","lng": "-73.9877","type": "Archive & designer","price": "3","goods": "Clothing|Accessories","eras": "Pre-1960s|1960s-70s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Serious American workwear and militaria; deadstock denim, chore coats and boots priced for collectors.","verified": "no","notes": ""},{"name": "Cure Thrift Shop","address": "111 E 12th St","neighborhood": "East Village","lat": "40.7318","lng": "-73.9888","type": "Thrift & charity","price": "1","goods": "Clothing|Housewares|Furniture|Books","eras": "Mixed","nonprofit": "yes","buysell": "Buys from public","hours": "","link": "https://curethriftshop.com","blurb": "Nonprofit thrift benefiting diabetes research. Furniture, housewares and clothing under one roof - the most donation-driven shop on this map.","verified": "no","notes": ""},{"name": "Buffalo Exchange","address": "332 E 11th St","neighborhood": "East Village","lat": "40.7288","lng": "-73.9852","type": "Consignment","price": "2","goods": "Clothing|Accessories","eras": "1990s-Y2K|Y2K-2010s","nonprofit": "no","buysell": "Buys from public|Trade credit","hours": "","link": "https://buffaloexchange.com","blurb": "Buy-sell-trade chain: bring a bag, get cash or store credit on the spot. The easiest place to divert your own clothes.","verified": "no","notes": ""},{"name": "Tokyo Joe","address": "334 E 11th St","neighborhood": "East Village","lat": "40.7288","lng": "-73.9851","type": "Consignment","price": "3","goods": "Clothing|Accessories","eras": "1990s-Y2K|Y2K-2010s","nonprofit": "no","buysell": "Consignment","hours": "","link": "","blurb": "Designer consignment next door to Buffalo Exchange; steady rotation of contemporary labels at resale prices.","verified": "no","notes": ""},{"name": "Cobblestones","address": "314 E 9th St","neighborhood": "East Village","lat": "40.7279","lng": "-73.9857","type": "Vintage boutique","price": "2","goods": "Clothing|Jewelry|Accessories","eras": "Pre-1960s|1960s-70s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Small, crowded, and heavy on costume jewelry, beaded bags and earlier-decade pieces.","verified": "no","notes": ""},{"name": "Fabulous Fanny's","address": "335 E 9th St","neighborhood": "East Village","lat": "40.7278","lng": "-73.9855","type": "Archive & designer","price": "3","goods": "Eyewear|Accessories","eras": "Pre-1960s|1960s-70s|1980s-90s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Vintage and antique eyewear specialist - thousands of frames from the 1800s onward. Costume designers shop here.","verified": "no","notes": ""},{"name": "Mr. Throwback","address": "437 E 9th St","neighborhood": "East Village","lat": "40.7272","lng": "-73.9821","type": "Vintage boutique","price": "2","goods": "Clothing|Accessories","eras": "1990s-Y2K","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "1990s sportswear: jerseys, starter jackets, snapbacks, basketball cards.","verified": "no","notes": ""},{"name": "No Relation Vintage","address": "204 First Ave","neighborhood": "East Village","lat": "40.7302","lng": "-73.9836","type": "Vintage boutique","price": "1","goods": "Clothing|Accessories","eras": "1980s-90s|1990s-Y2K","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Part of the L Train Vintage family - high volume, thrift-adjacent pricing, organized by category rather than curated.","verified": "no","notes": ""},{"name": "Rue St. Denis","address": "170 Avenue B","neighborhood": "East Village","lat": "40.7278","lng": "-73.9787","type": "Archive & designer","price": "3","goods": "Clothing|Accessories","eras": "Pre-1960s|1960s-70s|1980s-90s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Deadstock specialist: never-worn garments from decades past, kept in near-museum condition.","verified": "no","notes": ""},{"name": "Lost City Arts","address": "18 Cooper Sq","neighborhood": "East Village","lat": "40.7281","lng": "-73.9911","type": "Home & furniture","price": "3","goods": "Furniture|Art|Housewares","eras": "1960s-70s|1980s-90s","nonprofit": "no","buysell": "Sells only","hours": "","link": "https://lostcityarts.com","blurb": "Twentieth-century design: industrial lighting, mid-century seating, salvaged signage and architectural pieces.","verified": "no","notes": ""},{"name": "White Trash NYC","address": "304 E 5th St","neighborhood": "East Village","lat": "40.7265","lng": "-73.9870","type": "Home & furniture","price": "2","goods": "Furniture|Housewares|Art","eras": "1960s-70s|1980s-90s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Mid-century furniture and oddball housewares crammed into a narrow storefront.","verified": "no","notes": "Verify still open"},{"name": "Good Records NYC","address": "218 E 5th St","neighborhood": "East Village","lat": "40.7272","lng": "-73.9893","type": "Books & records","price": "2","goods": "Records","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "Used vinyl with a careful jazz, soul and reissue selection; buys collections.","verified": "no","notes": ""},{"name": "A1 Record Shop","address": "439 E 6th St","neighborhood": "East Village","lat": "40.7252","lng": "-73.9838","type": "Books & records","price": "2","goods": "Records","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "Crate-digger's shop - dance, hip-hop, disco and house, plus dollar bins by the door.","verified": "no","notes": ""},{"name": "Gimme Gimme Records","address": "325 E 5th St","neighborhood": "East Village","lat": "40.7263","lng": "-73.9868","type": "Books & records","price": "2","goods": "Records","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "Used rock, punk and reggae vinyl in a small, well-priced room.","verified": "no","notes": ""},{"name": "East Village Books","address": "99 St Marks Pl","neighborhood": "East Village","lat": "40.7277","lng": "-73.9847","type": "Books & records","price": "1","goods": "Books|Records","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "Secondhand books spilling onto the sidewalk; cheap paperbacks and a decent art and poetry section.","verified": "no","notes": ""},{"name": "Mast Books","address": "72 Avenue A","neighborhood": "East Village","lat": "40.7243","lng": "-73.9843","type": "Books & records","price": "2","goods": "Books|Art","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "https://mastbooks.com","blurb": "Used and out-of-print art, photography and design books, selected with an editor's eye.","verified": "no","notes": ""},{"name": "Alabaster Bookshop","address": "122 Fourth Ave","neighborhood": "East Village","lat": "40.7322","lng": "-73.9899","type": "Books & records","price": "2","goods": "Books","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "The last survivor of Book Row - used and rare titles on Fourth Avenue.","verified": "no","notes": ""},{"name": "Strand Book Store","address": "828 Broadway","neighborhood": "Union Square","lat": "40.7331","lng": "-73.9909","type": "Books & records","price": "2","goods": "Books|Art","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "https://strandbooks.com","blurb": "Eighteen miles of books, a large used and review-copy trade, and a buying desk that takes your old ones.","verified": "no","notes": "Just outside the LES/EV line - included as a boundary case"},{"name": "Codex Books","address": "1 Bleecker St","neighborhood": "NoHo","lat": "40.7256","lng": "-73.9922","type": "Books & records","price": "2","goods": "Books","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "","blurb": "Small, sharply selected used and rare bookshop at the top of the Bowery.","verified": "no","notes": ""},{"name": "David Owens Vintage","address": "154 Orchard St","neighborhood": "Lower East Side","lat": "40.7208","lng": "-73.9887","type": "Archive & designer","price": "3","goods": "Clothing|Accessories","eras": "Pre-1960s|1960s-70s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Decades-deep Orchard Street vintage with real depth in early denim, workwear and military.","verified": "no","notes": ""},{"name": "Edith Machinist","address": "104 Rivington St","neighborhood": "Lower East Side","lat": "40.7202","lng": "-73.9873","type": "Vintage boutique","price": "3","goods": "Clothing|Accessories|Jewelry","eras": "Pre-1960s|1960s-70s|1980s-90s","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Curated womenswear vintage - slips, boots, bags - with a soft, well-edited feel.","verified": "no","notes": ""},{"name": "Procell","address": "5 Delancey St","neighborhood": "Lower East Side","lat": "40.7203","lng": "-73.9932","type": "Archive & designer","price": "3","goods": "Clothing","eras": "1980s-90s|1990s-Y2K","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Archive graphic tees and band shirts at collector prices. As much reference library as shop.","verified": "no","notes": ""},{"name": "Marmalade Vintage","address": "174 Rivington St","neighborhood": "Lower East Side","lat": "40.7197","lng": "-73.9843","type": "Vintage boutique","price": "2","goods": "Clothing|Accessories","eras": "1960s-70s|1980s-90s|1990s-Y2K","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Affordable general vintage with a party-clothes streak.","verified": "no","notes": "Address needs confirming"},{"name": "Sweet Pickle Books","address": "47 Orchard St","neighborhood": "Lower East Side","lat": "40.7168","lng": "-73.9911","type": "Books & records","price": "1","goods": "Books","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "https://sweetpicklebooks.com","blurb": "Used books and house-made pickles - trade a jar for a book. Genuinely one of the odder reuse economies in the city.","verified": "no","notes": ""},{"name": "Bluestockings Cooperative","address": "116 Suffolk St","neighborhood": "Lower East Side","lat": "40.7200","lng": "-73.9857","type": "Books & records","price": "2","goods": "Books","eras": "Mixed","nonprofit": "yes","buysell": "Sells only","hours": "","link": "https://bluestockings.com","blurb": "Worker-owned radical bookstore and cafe; new and used titles, plus free community programming.","verified": "no","notes": ""},{"name": "James Veloria","address": "75 E Broadway","neighborhood": "Chinatown","lat": "40.7136","lng": "-73.9944","type": "Archive & designer","price": "3","goods": "Clothing|Accessories","eras": "1980s-90s|1990s-Y2K","nonprofit": "no","buysell": "Sells only","hours": "","link": "","blurb": "Upstairs in the Elizabeth Center mall - tightly curated designer vintage, strong on 90s Japanese and European labels.","verified": "no","notes": ""},{"name": "Downtown Music Gallery","address": "13 Monroe St","neighborhood": "Two Bridges","lat": "40.7124","lng": "-73.9932","type": "Books & records","price": "2","goods": "Records","eras": "Mixed","nonprofit": "no","buysell": "Buys from public","hours": "","link": "https://downtownmusicgallery.com","blurb": "Avant-garde, jazz and experimental records, new and used, in a basement under the Manhattan Bridge.","verified": "no","notes": ""},{"name": "Hester Street Fair","address": "Hester St at Essex St","neighborhood": "Lower East Side","lat": "40.7157","lng": "-73.9887","type": "Flea & market","price": "1","goods": "Clothing|Housewares|Jewelry|Art","eras": "Mixed","nonprofit": "no","buysell": "Sells only","hours": "Seasonal weekends","link": "https://hesterstreetfair.com","blurb": "Open-air weekend market with rotating vintage and secondhand vendors. Seasonal - check before you go.","verified": "no","notes": "Seasonal; confirm current season dates"},{"name": "Housing Works Bookstore Cafe","address": "126 Crosby St","neighborhood": "NoLIta","lat": "40.7247","lng": "-73.9962","type": "Thrift & charity","price": "1","goods": "Books|Records","eras": "Mixed","nonprofit": "yes","buysell": "Sells only","hours": "","link": "https://www.housingworks.org/bookstore","blurb": "All-donated books and records; every dollar funds Housing Works' services for New Yorkers living with HIV/AIDS and homelessness.","verified": "no","notes": ""},{"name": "INA NY","address": "21 Prince St","neighborhood": "NoLIta","lat": "40.7233","lng": "-73.9946","type": "Consignment","price": "3","goods": "Clothing|Accessories","eras": "1990s-Y2K|Y2K-2010s","nonprofit": "no","buysell": "Consignment","hours": "","link": "","blurb": "Long-standing designer consignment; takes in-season pieces from the public and resells them.","verified": "no","notes": "Confirm this location is still open"}]/*__ENDSEED__*/;
+
+/* ── map ──────────────────────────────────────────────────────────────── */
+var map = L.map('map',{zoomControl:false}).setView([40.7235,-73.9875],14);
+L.control.zoom({position:'bottomleft'}).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  {attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:19}).addTo(map);
+
+var SHOPS=[], markers=[], routeLayers=L.layerGroup().addTo(map), activeRoute=null;
+var ADMIN = new URLSearchParams(location.search).get('admin')==='1';
+var state = {q:'',types:{},goods:{},eras:{},price:0,nonprofit:false,buys:false};
+
+/* ── CSV parsing (handles quoted fields and embedded newlines) ─────────── */
+function parseCSV(text){
+  var rows=[],row=[],cell='',q=false,i=0;
+  text=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  for(;i<text.length;i++){
+    var c=text[i];
+    if(q){
+      if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; }
+      else cell+=c;
+    } else if(c==='"'){ q=true; }
+    else if(c===','){ row.push(cell); cell=''; }
+    else if(c==='\n'){ row.push(cell); cell=''; rows.push(row); row=[]; }
+    else cell+=c;
+  }
+  if(cell!==''||row.length){ row.push(cell); rows.push(row); }
+  if(!rows.length) return [];
+  var head=rows.shift().map(function(h){return h.trim().toLowerCase();});
+  return rows.filter(function(r){return r.join('').trim()!=='';}).map(function(r){
+    var o={}; head.forEach(function(h,n){o[h]=(r[n]||'').trim();}); return o;
+  });
+}
+
+function normalise(r){
+  var lat=parseFloat(r.lat), lng=parseFloat(r.lng);
+  return {
+    name:r.name, address:r.address||'', neighborhood:r.neighborhood||'',
+    lat:isFinite(lat)?lat:null, lng:isFinite(lng)?lng:null,
+    type:TYPES[r.type]?r.type:'Vintage boutique',
+    price:Math.min(3,Math.max(1,parseInt(r.price,10)||2)),
+    goods:splitList(r.goods), eras:splitList(r.eras),
+    nonprofit:/^(y|yes|true|1)$/i.test(r.nonprofit||''),
+    buysell:splitList(r.buysell), hours:r.hours||'', link:r.link||'',
+    blurb:r.blurb||'', verified:/^(y|yes|true|1)$/i.test(r.verified||''),
+    notes:r.notes||''
+  };
+}
+function splitList(s){ return (s||'').split('|').map(function(x){return x.trim();}).filter(Boolean); }
+
+/* ── loading: Google Sheet → shops.csv → built-in seed ─────────────────── */
+function sheetCsvUrl(u){
+  if(!u) return null;
+  if(/output=csv/.test(u)) return u;                                  // already a published CSV link
+  var m=u.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);               // ordinary sheet URL or bare ID
+  var id=m?m[1]:(/^[a-zA-Z0-9-_]{20,}$/.test(u.trim())?u.trim():null);
+  return id?('https://docs.google.com/spreadsheets/d/'+id+'/gviz/tq?tqx=out:csv&sheet=Shops'):null;
+}
+function setSource(name,note){
+  document.getElementById('srcname').textContent=name;
+  document.getElementById('srcnote').innerHTML=note||'';
+}
+function load(){
+  var url=sheetCsvUrl(SHEET_URL);
+  var chain = url
+    ? fetch(url).then(ok).then(function(t){ return {rows:parseCSV(t), src:'sheet'}; })
+    : Promise.reject();
+  chain.catch(function(){
+      return fetch('shops.csv').then(ok).then(function(t){ return {rows:parseCSV(t), src:'file'}; });
+    })
+    .catch(function(){ return {rows:SEED, src:'seed'}; })
+    .then(function(res){
+      SHOPS = res.rows.map(normalise).filter(function(s){return s.name;});
+      var withPin = SHOPS.filter(function(s){return s.lat!==null;}).length;
+      if(res.src==='sheet') setSource('Live from your Google Sheet','Edits to the sheet show up here on reload.');
+      else if(res.src==='file') setSource('shops.csv (starter list)', SHEET_URL?'Google Sheet unreachable — using the file in this repo.':'Connect a Google Sheet to edit without code.');
+      else setSource('Built-in starter list','Neither the sheet nor shops.csv could be read.');
+      if(withPin<SHOPS.length) document.getElementById('srcnote').innerHTML+=' <b>'+(SHOPS.length-withPin)+'</b> row(s) have no coordinates and are hidden.';
+      build();
+    });
+}
+function ok(r){ if(!r.ok) throw new Error(r.status); return r.text(); }
+
+/* ── filter UI ────────────────────────────────────────────────────────── */
+function chip(host,label,key,colour){
+  var b=document.createElement('button');
+  b.className='chip'; b.dataset.v=label;
+  b.innerHTML=(colour?'<i style="background:'+colour+'"></i>':'')+label;
+  b.onclick=function(){ state[key][label]=!state[key][label]; b.classList.toggle('on'); apply(); };
+  host.appendChild(b);
+}
+function buildFilters(){
+  var t=document.getElementById('fType'); t.innerHTML='';
+  Object.keys(TYPES).forEach(function(k){ chip(t,k,'types',TYPES[k]); });
+  var g=document.getElementById('fGoods'); g.innerHTML='';
+  GOODS.forEach(function(k){ chip(g,k,'goods',null); });
+  var e=document.getElementById('fEra'); e.innerHTML='';
+  ERAS.forEach(function(k){ chip(e,k,'eras',null); });
+
+  document.querySelectorAll('#fPrice button').forEach(function(b){
+    b.onclick=function(){
+      document.querySelectorAll('#fPrice button').forEach(function(x){x.classList.remove('on');});
+      b.classList.add('on'); state.price=+b.dataset.p; apply();
+    };
+  });
+  document.getElementById('fNonprofit').onchange=function(){ state.nonprofit=this.checked; apply(); };
+  document.getElementById('fBuys').onchange=function(){ state.buys=this.checked; apply(); };
+  document.getElementById('search').oninput=function(){ state.q=this.value.toLowerCase(); apply(); };
+
+  var r=document.getElementById('fRoutes'); r.innerHTML='';
+  ROUTES.forEach(function(rt,i){
+    var b=document.createElement('button');
+    b.className='routebtn'; b.dataset.i=i;
+    b.innerHTML='<i style="background:'+rt.color+'"></i><span><b>'+rt.name+'</b>'+rt.stops.length+' stops</span>';
+    b.onclick=function(){ selectRoute(activeRoute===i?null:i); };
+    r.appendChild(b);
+  });
+}
+
+function any(o){ for(var k in o) if(o[k]) return true; return false; }
+function hits(sel,list){ if(!any(sel)) return true; for(var k in sel) if(sel[k]&&list.indexOf(k)>-1) return true; return false; }
+
+function visible(s){
+  if(s.lat===null) return false;
+  if(state.q){
+    var hay=(s.name+' '+s.address+' '+s.blurb+' '+s.goods.join(' ')+' '+s.type).toLowerCase();
+    if(hay.indexOf(state.q)<0) return false;
+  }
+  if(any(state.types) && !state.types[s.type]) return false;
+  if(!hits(state.goods,s.goods)) return false;
+  if(!hits(state.eras,s.eras)) return false;
+  if(state.price && s.price!==state.price) return false;
+  if(state.nonprofit && !s.nonprofit) return false;
+  if(state.buys && !s.buysell.some(function(b){return /buys|consign|trade/i.test(b);})) return false;
+  if(activeRoute!==null && ROUTES[activeRoute].stops.indexOf(s.name)<0) return false;
+  return true;
+}
+
+/* ── markers ──────────────────────────────────────────────────────────── */
+function dot(s,n){
+  var c=TYPES[s.type], label=(activeRoute!==null)?'<b>'+n+'</b>':'';
+  return L.divIcon({className:'',iconSize:[n?24:16,n?24:16],iconAnchor:[n?12:8,n?12:8],
+    html:'<div style="width:100%;height:100%;border-radius:50%;background:'+c+';border:2.5px solid #fffdf8;'+
+         'box-shadow:0 2px 6px rgba(43,33,27,.4);display:flex;align-items:center;justify-content:center;'+
+         'color:#fff;font:700 11px Poppins,sans-serif">'+label+'</div>'});
+}
+function popup(s){
+  var maps='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s.name+', '+s.address+', New York, NY');
+  var h='<div class="pop"><h3>'+esc(s.name)+'</h3>'+
+    '<span class="kind" style="background:'+TYPES[s.type]+'">'+esc(s.type)+' · '+'$'.repeat(s.price)+'</span>'+
+    '<p class="addr">'+esc(s.address)+(s.neighborhood?' · '+esc(s.neighborhood):'')+'</p>';
+  if(s.blurb) h+='<p class="blurb">'+esc(s.blurb)+'</p>';
+  h+='<dl>';
+  if(s.hours) h+='<dt>Hours</dt><dd>'+esc(s.hours)+'</dd>';
+  if(s.buysell.length) h+='<dt>Takes stuff</dt><dd>'+esc(s.buysell.join(', '))+'</dd>';
+  if(s.nonprofit) h+='<dt>Mission</dt><dd>Nonprofit / mission-driven</dd>';
+  h+='</dl>';
+  if(s.eras.length||s.goods.length){
+    h+='<div class="tags">'+s.goods.concat(s.eras).map(function(t){return '<span>'+esc(t)+'</span>';}).join('')+'</div>';
+  }
+  h+='<div class="links"><a class="go" href="'+maps+'" target="_blank" rel="noopener">Directions ↗</a>'+
+     (s.link?'<a class="web" href="'+esc(s.link)+'" target="_blank" rel="noopener">Website ↗</a>':'')+'</div>';
+  if(!s.verified){
+    h+='<div class="unv">Not yet verified — hours, and whether it is still open, need confirming.'+
+       (FORM_URL?' <a href="'+FORM_URL+'" target="_blank" rel="noopener">Tell us what you found ↗</a>':'')+'</div>';
+  }
+  return h+'</div>';
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+function apply(){
+  markers.forEach(function(m){ map.removeLayer(m); }); markers=[];
+  var list = SHOPS.filter(visible);
+  if(activeRoute!==null){
+    var order=ROUTES[activeRoute].stops;
+    list.sort(function(a,b){ return order.indexOf(a.name)-order.indexOf(b.name); });
+  }
+  list.forEach(function(s,i){
+    var m=L.marker([s.lat,s.lng],{icon:dot(s,activeRoute!==null?i+1:0),draggable:ADMIN})
+          .bindPopup(popup(s),{maxWidth:280});
+    if(ADMIN) m.on('dragend',function(e){ var p=e.target.getLatLng(); s.lat=+p.lat.toFixed(5); s.lng=+p.lng.toFixed(5); adminOut(); });
+    m.addTo(map); markers.push(m);
+  });
+  drawRoute(list);
+  var n=list.length, tot=SHOPS.filter(function(s){return s.lat!==null;}).length;
+  var unv=SHOPS.filter(function(s){return !s.verified;}).length;
+  document.getElementById('count').innerHTML='<b>'+n+'</b> of '+tot+' shops shown'+
+    (unv?' · <b>'+unv+'</b> still unverified':'');
+}
+
+function drawRoute(list){
+  routeLayers.clearLayers();
+  document.getElementById('routecard').style.display='none';
+  if(activeRoute===null) return;
+  var rt=ROUTES[activeRoute];
+  var pts=list.map(function(s){return [s.lat,s.lng];});
+  if(pts.length>1) L.polyline(pts,{color:rt.color,weight:3,opacity:.75,dashArray:'7 7'}).addTo(routeLayers);
+  var card=document.getElementById('routecard');
+  document.getElementById('rcName').textContent=rt.name;
+  document.getElementById('rcDesc').textContent=rt.desc;
+  var ol=document.getElementById('rcList'); ol.innerHTML='';
+  list.forEach(function(s,i){
+    var li=document.createElement('li'); li.textContent=s.name;
+    li.onclick=function(){ map.setView([s.lat,s.lng],17); markers[i].openPopup(); };
+    ol.appendChild(li);
+  });
+  card.style.display='block';
+  if(pts.length) map.fitBounds(L.latLngBounds(pts).pad(.18));
+}
+
+function selectRoute(i){
+  activeRoute=i;
+  document.querySelectorAll('.routebtn').forEach(function(b){ b.classList.toggle('on',+b.dataset.i===i); });
+  apply();
+  if(i===null) map.setView([40.7235,-73.9875],14);
+}
+
+/* ── admin: drag pins, copy corrected coordinates ─────────────────────── */
+function adminOut(){
+  var box=document.getElementById('adminBox');
+  box.value = 'name,lat,lng\n' + SHOPS.filter(function(s){return s.lat!==null;})
+    .map(function(s){ return '"'+s.name.replace(/"/g,'""')+'",'+s.lat+','+s.lng; }).join('\n');
+}
+function buildAdmin(){
+  var d=document.createElement('div');
+  d.className='panel'; d.style.cssText='position:absolute;bottom:14px;left:14px;z-index:1000;width:290px;padding:13px 14px';
+  d.innerHTML='<p class="lbl" style="margin:0 0 6px">Pin-fixing mode</p>'+
+    '<p style="font-size:10.5px;color:var(--muted);margin:0 0 8px;line-height:1.45">Drag any pin to its true doorway, then paste these three columns back into the <b>lat</b> and <b>lng</b> columns of the sheet.</p>'+
+    '<textarea id="adminBox" style="width:100%;height:110px;font:400 10px ui-monospace,monospace;border:1px solid var(--line);border-radius:8px;padding:7px"></textarea>'+
+    '<button class="btn btn-primary" id="adminCopy" style="margin-top:7px">Copy all coordinates</button>';
+  document.body.appendChild(d);
+  document.getElementById('adminCopy').onclick=function(){
+    var t=document.getElementById('adminBox'); t.select(); document.execCommand('copy');
+    this.textContent='Copied ✓'; var b=this; setTimeout(function(){b.textContent='Copy all coordinates';},1600);
+  };
+  adminOut();
+}
+
+/* ── boot ─────────────────────────────────────────────────────────────── */
+function build(){
+  buildFilters();
+  if(ADMIN) buildAdmin();
+  apply();
+}
+document.getElementById('resetBtn').onclick=function(){
+  state={q:'',types:{},goods:{},eras:{},price:0,nonprofit:false,buys:false};
+  document.getElementById('search').value='';
+  document.getElementById('fNonprofit').checked=false;
+  document.getElementById('fBuys').checked=false;
+  document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('on');});
+  document.querySelectorAll('#fPrice button').forEach(function(b,i){b.classList.toggle('on',i===0);});
+  selectRoute(null);
+};
+document.getElementById('toggle').onclick=function(){
+  var c=document.getElementById('controls'); c.classList.toggle('hidden');
+};
+if(window.innerWidth<=760) document.getElementById('controls').classList.add('hidden');
+
+var add=document.getElementById('addBtn');
+if(FORM_URL){ add.href=FORM_URL; } else { add.style.display='none'; }
+document.getElementById('note').innerHTML =
+  'This is a starter list, not a finished one — every entry still needs someone to walk past and confirm it. '+
+  'Shops open and close fast here; if something is wrong'+(FORM_URL?', <a href="'+FORM_URL+'" target="_blank" rel="noopener">tell us</a>':', let us know')+'. '+
+  'Pin positions are block-accurate estimates until verified. Add <code>?admin=1</code> to the address bar to drag pins into place.';
+
+load();
+</script>
+</body></html>
