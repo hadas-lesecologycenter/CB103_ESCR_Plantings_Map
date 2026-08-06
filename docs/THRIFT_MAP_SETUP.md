@@ -1,17 +1,18 @@
 # Secondhand LES & East Village — setup & upkeep
 
-The map lives at **`docs/thrift-map.html`**, with Leaflet vendored beside it in
-**`docs/vendor/`**. It works on GitHub Pages with no build step.
+The map is **one file**: `docs/thrift-map.html` (~200 KB). No build step, no folder of
+assets, nothing to keep alongside it. Email it, put it on a USB stick, open it offline —
+it works. Leaflet 1.9.4 is inlined into the file (BSD-2-Clause, <https://leafletjs.com>)
+and the type is ordinary system fonts, so there is no CDN and no webfont to fail.
 
-> **Keep `vendor/` next to the HTML file.** Leaflet is served from this repo rather than
-> a CDN, so the map still works on locked-down networks and in preview panes that block
-> outside requests. Move the HTML somewhere without `vendor/` alongside it and you get a
-> yellow warning banner and the list view instead of a map. Fonts are ordinary system
-> fonts for the same reason — nothing to download.
->
-> The only external request left is the basemap tiles from CARTO. If those are blocked,
-> the map still works — pins, filters, routes and popups are all local — you just get a
-> plain dark background and a banner saying so.
+> The only external request in the whole page is the basemap tiles from CARTO. If those
+> are blocked — a locked-down network, a preview pane, no internet — the map still works.
+> Pins, filters, routes and popups are all local. You get a plain dark background and a
+> banner telling you why.
+
+To update the inlined Leaflet later, download `leaflet.js` and `leaflet.css` from
+leafletjs.com and replace the contents of the two tagged blocks at the top of the file.
+You will almost certainly never need to.
 
 There is a **map / list** toggle in the top-right of the map area. The list is the same
 filtered set as the pins, and it's what shows automatically if the map can't start.

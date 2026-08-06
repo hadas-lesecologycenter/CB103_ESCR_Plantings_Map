@@ -11,7 +11,7 @@ All maps are single self-contained HTML files under `docs/`, served by GitHub Pa
 | `docs/street-trees.html` | Street-tree-only age map |
 | `docs/tract-map.html` | CB3 census-tract choropleth |
 | `docs/cb3-street-trees.html` | CB3 street/all-trees toggle |
-| `docs/thrift-map.html` | Vintage, thrift and secondhand shops in the LES & East Village, with walking routes |
+| `docs/thrift-map.html` | Vintage, thrift and secondhand shops in the LES & East Village, with walking routes (single self-contained file) |
 
 The thrift map reads its shops from a Google Sheet (falling back to `docs/shops.csv`).
 Setup and upkeep: **[`docs/THRIFT_MAP_SETUP.md`](docs/THRIFT_MAP_SETUP.md)**.
