@@ -114,6 +114,31 @@ true vintage", or charges "collector prices". Those are the model's characteriza
 not reporting. They are the first thing to rewrite or cut, because a shop owner who
 disagrees with one has a legitimate complaint and there is no source to point to.
 
+### Are the shops real?
+
+None were invented. Every name is a business the model recalls actually existing in these
+neighborhoods — no plausible-sounding fakes were generated to pad the map out. But *real*
+and *open today* are different claims, and only the first one is being made. Retail here
+turns over fast, and the model's knowledge has a cutoff.
+
+The `confidence` column grades how much to trust each row, and it is the order to work in:
+
+| Value | Count | What it means |
+|---|---|---|
+| `high` | 26 | Distinctive, long-established businesses. Confident the shop is real; still unconfirmed that it is open at this address today. |
+| `medium` | 9 | Confident the business exists, less sure of the current address or whether it is still trading. |
+| `low` | 1 | Might be misremembered, or conflated with a similarly-named shop elsewhere. Verify before publishing, or cut. |
+
+The single `low` row is **Marmalade Vintage**. Confirm it exists at 174 Rivington before
+you publish, and delete the row if you can't.
+
+Two `medium` rows have specific doubts already noted: **INA NY** at 21 Prince St and
+**White Trash NYC** at 304 E 5th may both have closed.
+
+`confidence` is the model's self-assessment, not evidence. A `high` row can still be a
+shop that shut last year. Once you've checked a row, set `verified` to `yes` — that's the
+column that actually means something, because a person stands behind it.
+
 ### The worklist
 
 Every one of the 36 rows has `verified` = `no`, and every popup says so plainly. That
@@ -168,6 +193,7 @@ Visitors never see this mode.
 | `hours` | Free text, e.g. `Wed–Sun 12–7`. Hidden when blank. |
 | `link` | Full URL including `https://`. Hidden when blank. |
 | `blurb` | One or two sentences on what you'll actually find. |
+| `confidence` | `high` / `medium` / `low` — how much to trust the row before anyone checks it. Internal only, never shown on the map. |
 | `verified` | `yes` / `no`. |
 | `notes` | Internal only — never shown on the map. |
 
