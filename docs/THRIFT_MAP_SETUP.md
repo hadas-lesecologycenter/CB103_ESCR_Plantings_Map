@@ -32,7 +32,7 @@ The badge in the top-right corner always tells you which one is live.
 1. Create a new Google Sheet. Name the first tab exactly **`Shops`** (capital S — the
    map asks for that tab by name).
 2. **File → Import → Upload**, choose `docs/shops.csv`, and pick **Replace current sheet**.
-   You now have 36 shops and the correct 16 columns.
+   You now have 36 shops and the correct 17 columns.
 3. **File → Share → Publish to web**. Choose the **Shops** tab and **Comma-separated
    values (.csv)**, then **Publish**. Copy the link it gives you — it looks like:
 
@@ -148,8 +148,8 @@ To verify a shop: confirm it is open, get the real hours, get the real Instagram
 website, then set `verified` to `yes` in the sheet. The unverified badge disappears and
 the counter in the sidebar drops.
 
-Three rows carry a note in the `notes` column flagging something specific I could not
-confirm — check those first:
+Five rows carry a note in the `notes` column flagging something specific that could not
+be confirmed — check those first:
 
 - **Marmalade Vintage** — address needs confirming
 - **INA NY** (21 Prince St) — confirm this location is still trading
