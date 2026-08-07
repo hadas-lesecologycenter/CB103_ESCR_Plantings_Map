@@ -148,7 +148,7 @@ To verify a shop: confirm it is open, get the real hours, get the real Instagram
 website, then set `verified` to `yes` in the sheet. The unverified badge disappears and
 the counter in the sidebar drops.
 
-Five rows carry a note in the `notes` column flagging something specific that could not
+Six rows carry a note in the `notes` column flagging something specific that could not
 be confirmed — check those first:
 
 - **Marmalade Vintage** — address needs confirming
@@ -156,6 +156,8 @@ be confirmed — check those first:
 - **White Trash NYC** — confirm still open
 - **Trash and Vaudeville** — stocks mostly new reproduction rather than true vintage;
   delete the row if you want the map to be strictly secondhand
+- **Hester Street Fair** — seasonal; confirm this year's dates before anyone walks down
+  there expecting a market
 - **Strand Book Store** — at 12th & Broadway, just outside the neighborhood line; delete
   it if you want a tighter boundary
 
